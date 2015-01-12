@@ -39,6 +39,10 @@ public class State implements Cloneable {
     
     // the current time at this state, in milliseconds
     protected long time;
+    
+    // when computing access nodes,
+    // represents whether the state is reached from the access node candidate
+    public boolean covered;
 
     // accumulated weight up to this state
     public double weight;

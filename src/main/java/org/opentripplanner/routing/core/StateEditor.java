@@ -66,6 +66,7 @@ public class StateEditor {
         // We clear child.next here, since it could have already been set in the
         // parent
         child.next = null;
+        child.covered = parent.covered;
         if (e == null) {
             child.backState = null;
             child.vertex = parent.vertex;

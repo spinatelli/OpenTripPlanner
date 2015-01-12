@@ -202,7 +202,12 @@ public abstract class Edge implements Serializable {
         // No edge should take less than zero time to traverse.
         return 0;
     }
-
+    
+    public int timeUpperBound(RoutingRequest options) {
+        // No edge should take less than zero time to traverse.
+        return 0;
+    }
+    
     public abstract String getName();
 
     public boolean hasBogusName() {

@@ -103,4 +103,9 @@ public class PatternDwell extends TablePatternEdge implements OnboardEdge, Dwell
     public int getStopIndex() {
         return stopIndex;
     }
+
+    @Override
+    public int timeUpperBound(RoutingRequest options) {
+        return getPattern().scheduledTimetable.getWorstDwellTime(stopIndex);
+    }
 }

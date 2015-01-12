@@ -13,7 +13,15 @@
 
 package org.opentripplanner.routing.vertextype;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.graph.Vertex;
+
+import com.beust.jcommander.internal.Lists;
 
 /**
  * Represents an ordinary location in space, typically an intersection.
@@ -31,6 +39,16 @@ public class IntersectionVertex extends StreetVertex {
      * Is this a free-flowing intersection, i.e. should it have no delay at all? e.g., freeway ramps, &c.
      */
     public boolean freeFlowing;
+    
+    /**
+     * The set of access nodes for this street node, needed for 2-way PNR routing
+     */
+    public List<Vertex> accessNodes;
+    
+    /**
+     * The set of backward access nodes for this street node, needed for 2-way PNR routing
+     */
+    public List<Vertex> backwardAccessNodes;
 
     /** Returns true if this.freeFlowing or if it appears that this vertex is free-flowing */
     public boolean inferredFreeFlowing() {
@@ -45,6 +63,8 @@ public class IntersectionVertex extends StreetVertex {
         super(g, label, x, y, name);
         freeFlowing = false;
         trafficLight = false;
+        accessNodes = Lists.newArrayList();
+        backwardAccessNodes = Lists.newArrayList();
     }
 
     public IntersectionVertex(Graph g, String label, double x, double y) {

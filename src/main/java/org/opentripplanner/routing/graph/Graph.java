@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.prefs.Preferences;
 
 import com.google.common.collect.*;
+
 import org.joda.time.DateTime;
 import org.onebusaway.gtfs.impl.calendar.CalendarServiceImpl;
 import org.onebusaway.gtfs.model.Agency;
@@ -60,6 +61,7 @@ import org.opentripplanner.model.GraphBundle;
 import org.opentripplanner.profile.StopTreeCache;
 import org.opentripplanner.routing.alertpatch.AlertPatch;
 import org.opentripplanner.routing.core.MortonVertexComparatorFactory;
+import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TripPattern;
@@ -83,7 +85,7 @@ import com.vividsolutions.jts.geom.Geometry;
 /**
  * A graph is really just one or more indexes into a set of vertexes. It used to keep edgelists for each vertex, but those are in the vertex now.
  */
-public class Graph implements Serializable {
+public class Graph implements Serializable, Cloneable {
 
     private static final long serialVersionUID = MavenVersion.VERSION.getUID();
 
@@ -200,6 +202,16 @@ public class Graph implements Serializable {
         this.temporaryEdges = Collections.newSetFromMap(new ConcurrentHashMap<Edge, Boolean>());
         this.edgeById = new ConcurrentHashMap<Integer, Edge>();
         this.vertexById = new ConcurrentHashMap<Integer, Vertex>();
+    }
+
+    public Graph clone() {
+        Graph ret;
+        try {
+            ret = (Graph) super.clone();
+        } catch (CloneNotSupportedException e1) {
+            throw new IllegalStateException("This is not happening");
+        }
+        return ret;
     }
 
     /**

@@ -84,6 +84,11 @@ public class PatternHop extends TablePatternEdge implements OnboardEdge, HopEdge
     public double timeLowerBound(RoutingRequest options) {
         return getPattern().scheduledTimetable.getBestRunningTime(stopIndex);
     }
+
+    @Override
+    public int timeUpperBound(RoutingRequest options) {
+        return getPattern().scheduledTimetable.getWorstRunningTime(stopIndex);
+    }
     
     @Override
     public double weightLowerBound(RoutingRequest options) {

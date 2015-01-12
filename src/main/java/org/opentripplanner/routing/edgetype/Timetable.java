@@ -78,11 +78,13 @@ public class Timetable implements Serializable {
      * For each hop, the best running time. This serves to provide lower bounds on traversal time.
      */
     private transient int minRunningTimes[];
+    private transient int maxRunningTimes[];
 
     /**
      * For each stop, the best dwell time. This serves to provide lower bounds on traversal time.
      */
     private transient int minDwellTimes[];
+    private transient int maxDwellTimes[];
 
     /** 
      * Helps determine whether a particular pattern is worth searching for departures at a given time. 
@@ -256,8 +258,12 @@ public class Timetable implements Serializable {
         /* Find lower bounds on dwell and running times at each stop. */
         minDwellTimes = new int[nHops];
         minRunningTimes = new int[nHops];
+        maxDwellTimes = new int[nHops];
+        maxRunningTimes = new int[nHops];
         Arrays.fill(minDwellTimes, Integer.MAX_VALUE);
         Arrays.fill(minRunningTimes, Integer.MAX_VALUE);
+        Arrays.fill(maxDwellTimes, 0);
+        Arrays.fill(maxRunningTimes, 0);
         // Concatenate raw TripTimes and those referenced from FrequencyEntries
         List<TripTimes> allTripTimes = Lists.newArrayList(tripTimes);
         for (FrequencyEntry freq : frequencyEntries) allTripTimes.add(freq.tripTimes);
@@ -267,9 +273,15 @@ public class Timetable implements Serializable {
                 if (minDwellTimes[h] > dt) {
                     minDwellTimes[h] = dt;
                 }
+                if (maxDwellTimes[h] < dt) {
+                    maxDwellTimes[h] = dt;
+                }
                 int rt = tt.getRunningTime(h);
                 if (minRunningTimes[h] > rt) {
                     minRunningTimes[h] = rt;
+                }
+                if (maxRunningTimes[h] < rt) {
+                    maxRunningTimes[h] = rt;
                 }
             }
         }
@@ -529,6 +541,10 @@ public class Timetable implements Serializable {
     public int getBestRunningTime(int stopIndex) {
         return minRunningTimes[stopIndex];
     }
+    
+    public int getWorstRunningTime(int stopIndex) {
+        return maxRunningTimes[stopIndex];
+    }
 
     /** Returns the shortest possible dwell time at this stop */
     public int getBestDwellTime(int stopIndex) {
@@ -536,6 +552,13 @@ public class Timetable implements Serializable {
             return 0;
         }
         return minDwellTimes[stopIndex];
+    }
+    
+    public int getWorstDwellTime(int stopIndex) {
+        if (maxDwellTimes == null) {
+            return 0;
+        }
+        return maxDwellTimes[stopIndex];
     }
 
     public boolean isValidFor(ServiceDate serviceDate) {

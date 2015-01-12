@@ -110,6 +110,9 @@ public class CommandLineParameters implements Cloneable {
             description = "Based on GTFS data, guess which OSM streets each bus runs on to improve stop linking.")
     public boolean matchBusRoutesToStreets = false;
 
+    @Parameter(names = {"--computeAccessNodes"},
+            description = "Precompute access nodes for road nodes.")
+    boolean computeAccessNodes;
 
     /* Options for the server sub-task. */
 

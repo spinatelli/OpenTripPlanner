@@ -27,6 +27,7 @@ import org.opentripplanner.analyst.request.SampleGridRenderer;
 import org.opentripplanner.analyst.request.TileCache;
 import org.opentripplanner.api.resource.PlanGenerator;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
+import org.opentripplanner.graph_builder.impl.AccessNodeGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.EmbeddedConfigGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.GtfsGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.PruneFloatingIslands;
@@ -242,6 +243,14 @@ public class OTPConfigurator {
             GraphBuilder elevationBuilder = new ElevationGraphBuilderImpl(gcf);
             graphBuilder.addGraphBuilder(elevationBuilder);
         }
+        
+        // add a new graphbuilder that adds access nodes and PNR nodes for every street node
+        if (params.computeAccessNodes && hasOSM && hasGTFS) {
+            // do stuff
+            GraphBuilder accessNodeBuilder = new AccessNodeGraphBuilderImpl();
+            graphBuilder.addGraphBuilder(accessNodeBuilder);
+        }
+        
         graphBuilder.serializeGraph = ( ! params.inMemory ) || params.preFlight;
         return graphBuilder;
     }
