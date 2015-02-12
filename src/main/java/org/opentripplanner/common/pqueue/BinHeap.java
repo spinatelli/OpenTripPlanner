@@ -45,6 +45,17 @@ public class BinHeap<T> {
     public boolean empty() {
     	return size <= 0;
     }
+    
+    // uses equals!
+    public boolean contains(T item) {
+        for (T t: elem) {
+            if (t == null) continue;
+            
+            if (t.equals(item))
+                return true;
+        }
+        return false;
+    }
 
     public double peek_min_key() {
     	if (size > 0) 

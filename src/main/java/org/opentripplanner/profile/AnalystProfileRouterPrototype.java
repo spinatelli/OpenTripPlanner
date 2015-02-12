@@ -212,9 +212,9 @@ public class AnalystProfileRouterPrototype {
         rr.from = gl;
         // FIXME destination must be set, even though this is meaningless for one-to-many
         rr.to = gl;
+        rr.batch = (true);
         rr.setRoutingContext(graph);
         // Set batch after context, so both origin and dest vertices will be found.
-        rr.batch = (true);
         rr.walkSpeed = request.walkSpeed;
         // RR dateTime defaults to currentTime.
         // If elapsed time is not capped, searches are very slow.

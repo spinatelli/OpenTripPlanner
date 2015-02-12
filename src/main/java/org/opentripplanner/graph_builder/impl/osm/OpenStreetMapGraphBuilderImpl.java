@@ -257,6 +257,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             if (staticBikeParkAndRide) {
                 processBikeParkAndRideNodes();
             }
+            processParkingNodes();
 
             for (Area area : Iterables.concat(osmdb.getWalkableAreas(),
                     osmdb.getParkAndRideAreas(), osmdb.getBikeParkingAreas()))
@@ -362,6 +363,23 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 new BikeParkEdge(parkVertex);
             }
             LOG.info("Created " + n + " bike P+R.");
+        }
+
+        private void processParkingNodes() {
+            LOG.info("Processing parking nodes...");
+            int n = 0;
+            for (OSMNode node : osmdb.getParkingNodes()) {
+                n++;
+                String creativeName = wayPropertySet.getCreativeNameForWay(node);
+                if (creativeName == null)
+                    creativeName = "P+R";
+                
+                ParkAndRideVertex parkAndRideVertex = new ParkAndRideVertex(graph, "P+R" + node.getId(),
+                        "P+R_" + node.getId(), node.lon, node.lat, creativeName);
+                new ParkAndRideEdge(parkAndRideVertex);
+                LOG.debug("Created P+R '{}' ({})", creativeName, node.getId());
+            }
+            LOG.info("Created " + n + " parking nodes.");
         }
 
         private void buildBikeParkAndRideAreas() {

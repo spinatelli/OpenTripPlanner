@@ -29,6 +29,7 @@ import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
+import org.opentripplanner.routing.spt.TwoWayMultiShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,8 +107,8 @@ public class RetryingPathServiceImpl implements PathService {
         RoutingRequest currOptions;
         
         SPTService sptService = this.sptServiceFactory.instantiate();
-        
-        while (paths.size() < options.numItineraries) {
+        ShortestPathTree spt = null; 
+        while (paths.size() < options.numItineraries*2) {
             currOptions = optionQueue.poll();
             if (currOptions == null) {
                 LOG.debug("Ran out of options to try.");
@@ -123,7 +124,7 @@ public class RetryingPathServiceImpl implements PathService {
             long subsearchBeginTime = System.currentTimeMillis();
             
             LOG.debug("BEGIN SUBSEARCH");
-            ShortestPathTree spt = sptService.getShortestPathTree(currOptions, timeout);
+            spt = sptService.getShortestPathTree(currOptions, timeout);
             if (spt == null) {
                 // Serious failure, no paths provided. This could be signaled with an exception.
                 LOG.warn("Aborting search. {} paths found, elapsed time {} sec", 
@@ -134,7 +135,7 @@ public class RetryingPathServiceImpl implements PathService {
             LOG.debug("END SUBSEARCH ({} msec of {} msec total)", 
                     System.currentTimeMillis() - subsearchBeginTime,
                     System.currentTimeMillis() - searchBeginTime);
-            LOG.debug("SPT provides {} paths to target.", somePaths.size());
+            LOG.info("SPT provides {} paths to target.", somePaths.size());
 
             /* First, accumulate any new paths found into the list of itineraries. */
             for (GraphPath path : somePaths) {
@@ -201,7 +202,8 @@ public class RetryingPathServiceImpl implements PathService {
             return null;
         }
         // We order the list of returned paths by the time of arrival or departure (not path duration)
-        Collections.sort(paths, new PathComparator(options.arriveBy));
+        if (spt == null || !(spt instanceof TwoWayMultiShortestPathTree))
+            Collections.sort(paths, new PathComparator(options.arriveBy));
         return paths;
     }
 

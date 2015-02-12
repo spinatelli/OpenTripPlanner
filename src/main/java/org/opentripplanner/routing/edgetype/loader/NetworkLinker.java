@@ -23,6 +23,7 @@ import com.google.common.collect.Iterables;
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.graph_builder.annotation.BikeParkUnlinked;
 import org.opentripplanner.graph_builder.annotation.BikeRentalStationUnlinked;
+import org.opentripplanner.graph_builder.annotation.ParkAndRideUnlinked;
 import org.opentripplanner.graph_builder.annotation.StopUnlinked;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -33,6 +34,7 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
+import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,6 +138,13 @@ public class NetworkLinker {
         for (BikeParkVertex bprv : Iterables.filter(vertices, BikeParkVertex.class)) {
             if (!networkLinkerLibrary.connectVertexToStreets(bprv).getResult()) {
                 LOG.warn(graph.addBuilderAnnotation(new BikeParkUnlinked(bprv)));
+            }
+        }
+
+        LOG.info("Linking Parking nodes...");
+        for (ParkAndRideVertex prv : Iterables.filter(vertices, ParkAndRideVertex.class)) {
+            if (!networkLinkerLibrary.connectVertexToStreets(prv).getResult()) {
+                LOG.error(graph.addBuilderAnnotation(new ParkAndRideUnlinked(prv.getName(), prv.getIndex())));
             }
         }
     }

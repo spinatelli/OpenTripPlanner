@@ -120,17 +120,28 @@ public class PlanGenerator {
             throw new PathNotFoundException();
         }
 
-        for (GraphPath graphPath : paths) {
-            if (originalOptions.arriveBy) {
-                if (graphPath.states.getLast().getTimeSeconds() > originalOptions.dateTime) {
-                    LOG.error("A graph path arrives after the requested time. This implies a bug.");
-                }
-            } else {
-                if (graphPath.states.getFirst().getTimeSeconds() < originalOptions.dateTime) {
-                    LOG.error("A graph path leaves before the requested time. This implies a bug.");
-                }
-            }
-        }
+//        int j = 0;
+//        for (GraphPath graphPath : paths) {
+//            LOG.info("======");
+//            LOG.info("Graphpath "+j);
+//            LOG.info("======");
+//            int i=0;
+//            for (State s: graphPath.states) {
+////                LOG.info(s.toString());
+//                System.out.println(i+", "+s.getVertex().getCoordinate().y+", "+s.getVertex().getCoordinate().x+", by "+(s.getBackMode()!=null?s.getBackMode().toString():""));
+//                i++;
+//            }
+//            if (originalOptions.arriveBy) {
+//                if (graphPath.states.getLast().getTimeSeconds() > originalOptions.dateTime) {
+//                    LOG.error("A graph path arrives after the requested time. This implies a bug.");
+//                }
+//            } else {
+//                if (graphPath.states.getFirst().getTimeSeconds() < originalOptions.dateTime) {
+//                    LOG.error("A graph path leaves before the requested time. This implies a bug.");
+//                }
+//            }
+//            j++;
+//        }
 
         TripPlan plan = generatePlan(paths, originalOptions);
         if (plan != null) {

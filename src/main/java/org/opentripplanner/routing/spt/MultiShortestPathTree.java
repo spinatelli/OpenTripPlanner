@@ -123,6 +123,8 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
             return false;
         if (thisState.isBikeParked() != other.isBikeParked())
             return false;
+        if (thisState.stateData.isArriveBy() != other.stateData.isArriveBy())
+            return false;
 
         Graph graph = thisState.getOptions().rctx.graph;
         if (thisState.backEdge != other.getBackEdge() && ((thisState.backEdge instanceof StreetEdge)

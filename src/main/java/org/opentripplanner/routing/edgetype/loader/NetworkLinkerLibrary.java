@@ -27,6 +27,7 @@ import org.opentripplanner.extra_graph.EdgesForRoute;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
+import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
 import org.opentripplanner.routing.edgetype.StreetBikeParkLink;
 import org.opentripplanner.routing.edgetype.StreetBikeRentalLink;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -36,6 +37,7 @@ import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
+import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.slf4j.Logger;
@@ -117,6 +119,18 @@ public class NetworkLinkerLibrary {
             @Override
             public Collection<? extends Edge> connect(StreetVertex sv, BikeParkVertex v) {
                 return Arrays.asList(new StreetBikeParkLink(sv, v), new StreetBikeParkLink(v, sv));
+            }
+        });
+        return request;
+    }
+    
+    public LinkRequest connectVertexToStreets(ParkAndRideVertex v) {
+        LinkRequest request = new LinkRequest(this);
+        request.connectVertexToStreets(v, new TraverseModeSet(TraverseMode.WALK,
+                TraverseMode.CAR), new LinkRequest.StreetLinkFactory<ParkAndRideVertex>() {
+            @Override
+            public Collection<? extends Edge> connect(StreetVertex sv, ParkAndRideVertex v) {
+                return Arrays.asList(new ParkAndRideLinkEdge(sv, v), new ParkAndRideLinkEdge(v, sv));
             }
         });
         return request;

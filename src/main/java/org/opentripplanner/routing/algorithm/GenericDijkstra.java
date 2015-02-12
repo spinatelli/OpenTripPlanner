@@ -13,26 +13,22 @@
 
 package org.opentripplanner.routing.algorithm;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
 
+import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.SearchTerminationStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipEdgeStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipTraverseResultStrategy;
 import org.opentripplanner.routing.algorithm.strategies.TrivialRemainingWeightHeuristic;
-import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.State;
+import org.opentripplanner.routing.edgetype.ParkAndRideEdge;
+import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.spt.BasicShortestPathTree;
 import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.TransitStop;
 
 /**
  * Find the shortest path between graph vertices using Dijkstra's algorithm.
@@ -53,8 +49,15 @@ public class GenericDijkstra {
 
     private RemainingWeightHeuristic heuristic = new TrivialRemainingWeightHeuristic();
 
+    private boolean twoway;
+
     public GenericDijkstra(RoutingRequest options) {
+        this(options, false);
+    }
+    
+    public GenericDijkstra(RoutingRequest options, boolean twoway) {
         this.options = options;
+        this.twoway  = twoway;
     }
 
     public void setSearchTerminationStrategy(SearchTerminationStrategy searchTerminationStrategy) {
@@ -86,10 +89,16 @@ public class GenericDijkstra {
                 spt.add(s);
                 queue.insert(s, s.getWeight());
             }
+
+        spt.add(initialState);
+        queue.insert(initialState, initialState.getWeight());
+
+//        System.out.println("=======\nSearch\n=======");
         while (!queue.empty()) { // Until the priority queue is empty:
             State u = queue.extract_min();
             Vertex u_vertex = u.getVertex();
-
+//            if(u.covered)
+//                System.out.println("COvered");
             if (traverseVisitor != null) {
                 traverseVisitor.visitVertex(u);
             }
@@ -113,9 +122,14 @@ public class GenericDijkstra {
                     skipEdgeStrategy.shouldSkipEdge(initialState.getVertex(), null, u, edge, spt, options)) {
                     continue;
                 }
+//                if (u.covered)
+//                    System.out.println("EDGE "+edge.getClass().getName());
                 // Iterate over traversal results. When an edge leads nowhere (as indicated by
                 // returning NULL), the iteration is over.
-                for (State v = edge.traverse(u); v != null; v = v.getNextResult()) {
+                State v = edge.traverse(u);
+                for (; v != null; v = v.getNextResult()) {
+//                    if (u.covered)
+//                        System.out.println("STATE "+v);
                     if (skipTraverseResultStrategy != null &&
                         skipTraverseResultStrategy.shouldSkipTraversalResult(initialState.getVertex(), null, u, v, spt, options)) {
                         continue;
@@ -129,7 +143,9 @@ public class GenericDijkstra {
                     if (v.exceedsWeightLimit(options.maxWeight)) continue;
                     if (spt.add(v)) {
                         double estimate = heuristic.computeForwardWeight(v, target);
-                        queue.insert(v, v.getWeight() + estimate);
+                        double total = v.getWeight() + estimate;
+                        if (twoway) total *= 2;
+                        queue.insert(v, total);
                         if (traverseVisitor != null) traverseVisitor.visitEnqueue(v);
                     }
                 }

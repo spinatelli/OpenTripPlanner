@@ -13,26 +13,28 @@
 
 package org.opentripplanner.routing.algorithm;
 
+import java.util.List;
+
+import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.SearchTerminationStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipEdgeStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipTraverseResultStrategy;
 import org.opentripplanner.routing.algorithm.strategies.TrivialRemainingWeightHeuristic;
-import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.edgetype.HopEdge;
+import org.opentripplanner.routing.core.State;
+import org.opentripplanner.routing.edgetype.ParkAndRideEdge;
 import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.spt.BasicShortestPathTree;
 import org.opentripplanner.routing.spt.ShortestPathTree;
+import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 
 /**
  * Find the shortest path between graph vertices using Dijkstra's algorithm.
  */
-public class ProfileDijkstra {
+public class ANDijkstra {
 
     private RoutingRequest options;
 
@@ -48,7 +50,7 @@ public class ProfileDijkstra {
 
     private RemainingWeightHeuristic heuristic = new TrivialRemainingWeightHeuristic();
 
-    public ProfileDijkstra(RoutingRequest options) {
+    public ANDijkstra(RoutingRequest options) {
         this.options = options;
     }
 
@@ -65,6 +67,10 @@ public class ProfileDijkstra {
     }
 
     public ShortestPathTree getShortestPathTree(State initialState) {
+        return getShortestPathTree(initialState, null);
+    }
+    
+    public ShortestPathTree getShortestPathTree(State initialState, List<State> initialStates) {
         Vertex target = null;
         if (options.rctx != null) {
             target = initialState.getOptions().rctx.target;
@@ -72,14 +78,21 @@ public class ProfileDijkstra {
         ShortestPathTree spt = new BasicShortestPathTree(options);
         BinHeap<State> queue = new BinHeap<State>(1000);
 
+        if (initialStates != null)
+            for (State s : initialStates) {
+                spt.add(s);
+                queue.insert(s, s.getWeight());
+            }
+
         spt.add(initialState);
         queue.insert(initialState, initialState.getWeight());
 
-//        System.out.println("New search");
+//        System.out.println("=======\nSearch\n=======");
         while (!queue.empty()) { // Until the priority queue is empty:
             State u = queue.extract_min();
             Vertex u_vertex = u.getVertex();
-
+//            if(u.covered)
+//                System.out.println("COvered");
             if (traverseVisitor != null) {
                 traverseVisitor.visitVertex(u);
             }
@@ -98,45 +111,25 @@ public class ProfileDijkstra {
                 break;
             }
 
-            for (Edge edge : options.arriveBy ? u_vertex.getIncoming() : u_vertex.getOutgoing()) {
-                if (skipEdgeStrategy != null &&
-                    skipEdgeStrategy.shouldSkipEdge(initialState.getVertex(), null, u, edge, spt, options)) {
-                    continue;
-                }
-//                System.out.println("New edge " + edge);
-                if (edge.timeUpperBound(options) > 0) {
-                    StateEditor s1 = u.edit(edge);
-                    s1.incrementTimeInSeconds(edge.timeUpperBound(options));
-                    if (edge instanceof HopEdge) {
-                        if (u.getOptions().arriveBy)
-                            s1.setZone(((HopEdge)edge).getBeginStop().getZoneId());
-                        else
-                            s1.setZone(((HopEdge)edge).getEndStop().getZoneId());
-                    }
-                    s1.incrementWeight(edge.timeUpperBound(options));
-                    State v = s1.makeState();
-                    
-                    if (skipTraverseResultStrategy != null &&
-                        skipTraverseResultStrategy.shouldSkipTraversalResult(initialState.getVertex(), null, u, v, spt, options)) {
+            if (!(u.getVertex() instanceof ParkAndRideVertex)) {
+                for (Edge edge : options.arriveBy ? u_vertex.getIncoming() : u_vertex.getOutgoing()) {
+                    if (skipEdgeStrategy != null &&
+                        skipEdgeStrategy.shouldSkipEdge(initialState.getVertex(), null, u, edge, spt, options)) {
                         continue;
                     }
-                    if (traverseVisitor != null) {
-                        traverseVisitor.visitEdge(edge, v);
-                    }
-                    if (verbose) {
-                        System.out.printf("  w = %f + %f = %f %s\n", u.getWeight(), v.getWeightDelta(), v.getWeight(), v.getVertex());
-                    }
-                    if (v.exceedsWeightLimit(options.maxWeight)) continue;
-                    if (spt.add(v)) {
-                        double estimate = heuristic.computeForwardWeight(v, target);
-                        queue.insert(v, v.getWeight() + estimate);
-                        if (traverseVisitor != null) traverseVisitor.visitEnqueue(v);
-                    }
-                } else {
+                    State v = null;
+                    if (edge instanceof ParkAndRideLinkEdge)
+                        v = ((ParkAndRideLinkEdge) edge).traverse(u, true);
+                    else 
+                        v = edge.traverse(u);
+                        
+    //                if (u.covered)
+    //                    System.out.println("EDGE "+edge.getClass().getName());
                     // Iterate over traversal results. When an edge leads nowhere (as indicated by
                     // returning NULL), the iteration is over.
-                    for (State v = edge.traverse(u); v != null; v = v.getNextResult()) {
-//                        System.out.println("New state "+v);
+                    for (; v != null; v = v.getNextResult()) {
+    //                    if (u.covered)
+    //                        System.out.println("STATE "+v);
                         if (skipTraverseResultStrategy != null &&
                             skipTraverseResultStrategy.shouldSkipTraversalResult(initialState.getVertex(), null, u, v, spt, options)) {
                             continue;
@@ -145,7 +138,7 @@ public class ProfileDijkstra {
                             traverseVisitor.visitEdge(edge, v);
                         }
                         if (verbose) {
-                            System.out.printf("  w = %f + %f = %f %s\n", u.getWeight(), v.getWeightDelta(), v.getWeight(), v.getVertex());
+                            System.out.printf("  w = %f + %f = %f %s", u.getWeight(), v.getWeightDelta(), v.getWeight(), v.getVertex());
                         }
                         if (v.exceedsWeightLimit(options.maxWeight)) continue;
                         if (spt.add(v)) {

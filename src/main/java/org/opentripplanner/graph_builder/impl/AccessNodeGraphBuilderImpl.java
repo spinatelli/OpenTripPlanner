@@ -23,7 +23,7 @@ import java.util.Set;
 
 import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
-import org.opentripplanner.routing.algorithm.GenericDijkstra;
+import org.opentripplanner.routing.algorithm.ANDijkstra;
 import org.opentripplanner.routing.algorithm.ProfileDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.MultiTargetTerminationStrategy;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -37,6 +37,7 @@ import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
+import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +53,7 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
 
     private static final Logger LOG = LoggerFactory.getLogger(AccessNodeGraphBuilderImpl.class);
 
-    private static final int STEP = 5;
+    private static final int STEP = 1;
 
     public List<String> provides() {
         return Arrays.asList("access nodes");
@@ -70,10 +71,8 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
         ArrayList<Vertex> vertices = new ArrayList<Vertex>();
         vertices.addAll(graph.getVertices());
         Map<String, Integer> vmap = new HashMap<String, Integer>();
-        int i = 0;
-        for (Vertex v : vertices) {
-            vmap.put(v.getLabel(), i);
-            i++;
+        for (int i=0; i<vertices.size(); i++) {
+            vmap.put(vertices.get(i).getLabel(), i);
         }
 
         graph.index(new DefaultStreetVertexIndexFactory());
@@ -107,9 +106,11 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
              * the day, which can be found in A^−1 (a).
              */
             RoutingRequest options = new RoutingRequest(TraverseMode.TRANSIT);
-            options.from = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":"
+            options.to = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":"
                     + ts));
             options.batch = true;
+            options.parkAndRide = true;
+            options.arriveBy = true;
             // options.setDummyRoutingContext(graph);
             options.setRoutingContext(graph);
             options.setNumItineraries(1);
@@ -128,26 +129,6 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
             long time2 = System.currentTimeMillis();
             avgProfile += (time2 - time);
 
-            // Other way (TODO: is this backward or the other?)
-            options = new RoutingRequest(TraverseMode.TRANSIT);
-            options.to = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":"
-                    + ts));
-            options.batch = true;
-            options.arriveBy = true;
-            // options.setDummyRoutingContext(graph);
-            options.setRoutingContext(graph);
-            options.setNumItineraries(1);
-            options.setModes(new TraverseModeSet(TraverseMode.WALK, TraverseMode.TRANSIT));
-
-            profileDijkstra = new ProfileDijkstra(options);
-            profileDijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(stops));
-
-            initial = new State(options);
-            time = System.currentTimeMillis();
-            ShortestPathTree bwdSPT = profileDijkstra.getShortestPathTree(initial);
-            time2 = System.currentTimeMillis();
-            avgProfile += (time2 - time);
-
             /*
              * uni-modal time-independent many-to-all Dijkstra search, restricted to the road
              * subnetwork The road network is assumed time-independent since in this case it is used
@@ -162,44 +143,15 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
                     states.add(s);
 
             RoutingRequest opt = new RoutingRequest(TraverseMode.WALK);
-            opt.from = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts));
-            opt.batch = true;
-            opt.setDummyRoutingContext(graph);
-            // opt.parkAndRide = true;
-            // opt.bikeParkAndRide = true;
-            opt.setNumItineraries(1);
-            opt.setModes(new TraverseModeSet(TraverseMode.WALK));
-            GenericDijkstra mmdijkstra = new GenericDijkstra(opt);
-            mmdijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(
-                    new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
-                            IntersectionVertex.class)))));
-            time = System.currentTimeMillis();
-            initial.covered = true;
-            spt = mmdijkstra.getShortestPathTree(initial, states);
-            time2 = System.currentTimeMillis();
-            avgDijkstra += (time2 - time);
-
-            for (State s : spt.getAllStates())
-                if (s.covered && s.getVertex() instanceof IntersectionVertex) {
-                    ((IntersectionVertex) (vertices.get(vmap.get(s.getVertex().getLabel())))).accessNodes
-                            .add(ts);
-                }
-
-            // BACKWARD?
-            states.clear();
-            for (State s : bwdSPT.getAllStates())
-                if (s.getVertex() instanceof TransitStop)
-                    states.add(s);
-            opt = new RoutingRequest(TraverseMode.WALK);
             opt.to = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts));
             opt.batch = true;
-            opt.arriveBy = true;
             opt.setDummyRoutingContext(graph);
-            // opt.parkAndRide = true;
+            opt.parkAndRide = true;
+            opt.arriveBy = true;
             // opt.bikeParkAndRide = true;
             opt.setNumItineraries(1);
             opt.setModes(new TraverseModeSet(TraverseMode.WALK));
-            mmdijkstra = new GenericDijkstra(opt);
+            ANDijkstra mmdijkstra = new ANDijkstra(opt);
             mmdijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(
                     new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
                             IntersectionVertex.class)))));
@@ -209,11 +161,75 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
             time2 = System.currentTimeMillis();
             avgDijkstra += (time2 - time);
 
-            for (State s : spt.getAllStates())
-                if (s.covered && s.getVertex() instanceof IntersectionVertex) {
-                    ((IntersectionVertex) (vertices.get(vmap.get(s.getVertex().getLabel())))).backwardAccessNodes
-                            .add(ts);
+            for (State s : spt.getAllStates()) {
+                if (s.covered) {
+                    if (s.getVertex() instanceof IntersectionVertex)
+                        ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
+                                .add(ts);
+                    if (s.getVertex() instanceof ParkAndRideVertex)
+                        ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
+                                .add(ts);
                 }
+            }
+
+            // BACKWARD?
+            options = new RoutingRequest(TraverseMode.TRANSIT);
+            options.from = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":"
+                    + ts));
+            options.batch = true;
+//            options.arriveBy = true;
+//            options.parkAndRide = true;
+            // options.setDummyRoutingContext(graph);
+            options.setRoutingContext(graph);
+            options.setNumItineraries(1);
+            options.setModes(new TraverseModeSet(TraverseMode.WALK, TraverseMode.TRANSIT));
+
+            profileDijkstra = new ProfileDijkstra(options);
+            profileDijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(stops));
+
+            initial = new State(options);
+            time = System.currentTimeMillis();
+            ShortestPathTree bwdSPT = profileDijkstra.getShortestPathTree(initial);
+            time2 = System.currentTimeMillis();
+            avgProfile += (time2 - time);
+            
+            //
+            states.clear();
+            for (State s : bwdSPT.getAllStates())
+                if (s.getVertex() instanceof TransitStop) {
+                    s.setParkAndRide(true);
+                    states.add(s);
+                }
+            opt = new RoutingRequest(TraverseMode.WALK);
+            opt.from = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts));
+            opt.batch = true;
+//            opt.arriveBy = true;
+            opt.setDummyRoutingContext(graph);
+            opt.parkAndRide = true;
+            // opt.bikeParkAndRide = true;
+            opt.setNumItineraries(1);
+            opt.setModes(new TraverseModeSet(TraverseMode.WALK));
+            mmdijkstra = new ANDijkstra(opt);
+            mmdijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(
+                    new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
+                            IntersectionVertex.class)))));
+            time = System.currentTimeMillis();
+            initial.covered = true;
+            initial.setParkAndRide(true);
+            spt = mmdijkstra.getShortestPathTree(initial, states);
+            time2 = System.currentTimeMillis();
+            avgDijkstra += (time2 - time);
+
+            for (State s : spt.getAllStates()) {
+                if (s.covered) {
+                    if (s.getVertex() instanceof IntersectionVertex)
+                        ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
+                                .add(ts);
+                    if (s.getVertex() instanceof ParkAndRideVertex)
+                        ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
+                                .add(ts);
+                }
+            }
 
             counter++;
             if (shouldLog(counter, stopsize)) {
@@ -221,22 +237,47 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
                         + "% of transit stops");
                 LOG.info("Average profiling time " + ((double) avgProfile / counter));
                 LOG.info("Average dijkstra time " + ((double) avgDijkstra / counter));
+//                break;
             }
         }
 
         LOG.info("Computed " + counter + " out of " + stopsize);
         counter = 0;
-        int c2 = 0;
+        int bwd = 0;
+        int fwd = 0;
         for (IntersectionVertex iv : Iterables.filter(vertices, IntersectionVertex.class)) {
-            if (iv.accessNodes != null && iv.accessNodes.size() > 1) {
+            if (iv.accessNodes != null && iv.accessNodes.size() > 0) {
                 // LOG.info("Access Nodes = " + iv.accessNodes.size());
-                c2++;
+                fwd++;
+            }
+            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() > 0) {
+                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+                bwd++;
             }
             counter++;
         }
 
-        LOG.info(c2 + " out of " + counter + " have access nodes");
+        LOG.info(fwd + " out of " + counter + " Intersection vertices have access nodes");
+        LOG.info(bwd + " out of " + counter + " Intersection vertices have bwd access nodes");
+        
+        counter = 0;
+        bwd = 0;
+        fwd = 0;
+        for (ParkAndRideVertex iv : Iterables.filter(vertices, ParkAndRideVertex.class)) {
+            if (iv.accessNodes != null && iv.accessNodes.size() > 0) {
+                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+                fwd++;
+            }
+            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() > 0) {
+                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+                bwd++;
+            }
+            counter++;
+        }
 
+        LOG.info(fwd + " out of " + counter + " PNR nodes have access nodes");
+        LOG.info(bwd + " out of " + counter + " PNR nodes have bwd access nodes");
+        
         LOG.info("Done computing access nodes for street nodes...");
     }
 

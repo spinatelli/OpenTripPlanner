@@ -41,9 +41,9 @@ public class ParkAndRideLinkEdge extends Edge {
      * By how much we have to really walk compared to straight line distance. This is a magic factor
      * as we really can't guess, unless we know 1) where the user will park, and 2) we route inside
      * the parking lot.
-     *
-     * TODO: perhaps all of this obstruction and distance calculation should just be reduced to
-     * a single static cost. Parking lots are not that big, and these are all guesses.
+     * 
+     * TODO: perhaps all of this obstruction and distance calculation should just be reduced to a
+     * single static cost. Parking lots are not that big, and these are all guesses.
      */
     private double WALK_OBSTRUCTION_FACTOR = 2.0;
 
@@ -93,8 +93,12 @@ public class ParkAndRideLinkEdge extends Edge {
 
     @Override
     public State traverse(State s0) {
+        return traverse(s0, false);
+    }
+
+    public State traverse(State s0, boolean ignoreDirection) {
         // Do not enter park and ride mechanism if it's not activated in the routing request.
-        if ( ! s0.getOptions().parkAndRide) {
+        if (!s0.getOptions().parkAndRide) {
             return null;
         }
         Edge backEdge = s0.getBackEdge();
@@ -102,15 +106,30 @@ public class ParkAndRideLinkEdge extends Edge {
         // If we are exiting (or entering-backward), check if we
         // really parked a car: this will prevent using P+R as
         // shortcut.
-        if ((back != exit) && !(backEdge instanceof ParkAndRideEdge))
-            return null;
-
-        StateEditor s1 = s0.edit(this);
         TraverseMode mode = s0.getNonTransitMode();
+        if (!s0.getOptions().twoway) {
+            if (!ignoreDirection && back != exit && !(backEdge instanceof ParkAndRideEdge))
+                return null;
+        } else {
+            if (back != exit && !(backEdge instanceof ParkAndRideEdge)
+                && ((back && mode != TraverseMode.CAR)
+                || (!back && mode != TraverseMode.WALK)))
+                return null;
+        }
+        
+//        
+//        if (!s0.getOptions().twoway && !ignoreDirection && back != exit && !(backEdge instanceof ParkAndRideEdge))
+//            return null;
+//        
+//        if (s0.getOptions().twoway && back != exit
+//                && !((!(backEdge instanceof ParkAndRideEdge) && back && mode == TraverseMode.CAR)
+//                || (!(backEdge instanceof ParkAndRideEdge) && !back && mode == TraverseMode.WALK)))
+//            return null;
+        
+        StateEditor s1 = s0.edit(this);
         if (mode == TraverseMode.WALK) {
             // Walking
-            double walkTime = linkDistance * WALK_OBSTRUCTION_FACTOR
-                    / s0.getOptions().walkSpeed;
+            double walkTime = linkDistance * WALK_OBSTRUCTION_FACTOR / s0.getOptions().walkSpeed;
             s1.incrementTimeInSeconds((int) Math.round(walkTime));
             s1.incrementWeight(walkTime);
             s1.incrementWalkDistance(linkDistance);

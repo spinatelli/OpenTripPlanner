@@ -113,6 +113,14 @@ public class CommandLineParameters implements Cloneable {
     @Parameter(names = {"--computeAccessNodes"},
             description = "Precompute access nodes for road nodes.")
     boolean computeAccessNodes;
+    
+    @Parameter(names = {"--printAccessNodes"},
+            description = "Print computed access node stats")
+    public boolean anStats = false;
+    
+    @Parameter(names = {"--pnrRoute"},
+            description = "Route with PNR nodes")
+    public boolean pnrRoute = false;
 
     /* Options for the server sub-task. */
 

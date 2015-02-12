@@ -66,6 +66,10 @@ public class OSMNode extends OSMWithTags {
                 || "halt".equals(getTag("railway"))
                 || "bus_station".equals(getTag("amenity"));
     }
+    
+    public boolean isParking() {
+        return "parking".equals(getTag("amenity"));
+    }
 
     /**
      * TODO Maybe all those methods (isSomething...) in OSMXxx should be moved to a dedicated OSM

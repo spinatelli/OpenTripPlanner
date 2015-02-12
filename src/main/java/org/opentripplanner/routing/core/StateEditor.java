@@ -21,6 +21,7 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.automata.AutomatonState;
+import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
@@ -67,6 +68,7 @@ public class StateEditor {
         // parent
         child.next = null;
         child.covered = parent.covered;
+        child.pnrNode = parent.pnrNode;
         if (e == null) {
             child.backState = null;
             child.vertex = parent.vertex;
@@ -96,8 +98,8 @@ public class StateEditor {
                 LOG.warn("   parent vertex: {}", parent.vertex);
                 defectiveTraversal = true;
             }
-            if (traversingBackward != parent.getOptions().arriveBy) {
-                LOG.error("Actual traversal direction does not match traversal direction in TraverseOptions.");
+            if (traversingBackward != parent.getOptions().arriveBy && !(e instanceof ParkAndRideLinkEdge)) {
+//                LOG.error("Actual traversal direction does not match traversal direction in TraverseOptions.");
                 defectiveTraversal = true;
             }
         }
@@ -119,7 +121,7 @@ public class StateEditor {
 
         // if something was flagged incorrect, do not make a new state
         if (defectiveTraversal) {
-            LOG.error("Defective traversal flagged on edge " + child.backEdge);
+//            LOG.error("Defective traversal flagged on edge " + child.backEdge);
             return null;
         }
 

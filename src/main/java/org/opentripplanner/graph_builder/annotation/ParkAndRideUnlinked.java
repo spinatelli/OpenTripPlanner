@@ -13,6 +13,8 @@
 
 package org.opentripplanner.graph_builder.annotation;
 
+import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
+
 public class ParkAndRideUnlinked extends GraphBuilderAnnotation {
 
     private static final long serialVersionUID = 1L;

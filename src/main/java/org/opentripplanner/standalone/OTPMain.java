@@ -13,16 +13,27 @@
 
 package org.opentripplanner.standalone;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
+
+import org.opentripplanner.api.model.Itinerary;
+import org.opentripplanner.api.model.Leg;
+import org.opentripplanner.api.model.TripPlan;
+import org.opentripplanner.api.model.WalkStep;
+import org.opentripplanner.common.model.GenericLocation;
+import org.opentripplanner.graph_builder.AnnotationsToHTML;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
+import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
-import java.io.File;
-import org.opentripplanner.graph_builder.AnnotationsToHTML;
 
 /**
  * I originally considered configuring OTP server through Java properties, with one global
@@ -55,9 +66,9 @@ public class OTPMain {
             LOG.error("Parameter error: {}", pex.getMessage());
             System.exit(1);
         }
-        
+
         OTPConfigurator configurator = new OTPConfigurator(params);
-        
+
         // start graph builder, if asked for
         GraphBuilderTask graphBuilder = configurator.builderFromParameters();
         if (graphBuilder != null) {
@@ -67,19 +78,20 @@ public class OTPMain {
                 graphBuilder.getGraph().index(new DefaultStreetVertexIndexFactory());
                 configurator.makeGraphService(graphBuilder.getGraph());
             }
-            
+
             if (params.htmlAnnotations) {
-                AnnotationsToHTML annotationsToHTML = new AnnotationsToHTML(graphBuilder.getGraph(), new File(params.build.get(0), "report.html"));
+                AnnotationsToHTML annotationsToHTML = new AnnotationsToHTML(
+                        graphBuilder.getGraph(), new File(params.build.get(0), "report.html"));
                 annotationsToHTML.generateAnnotationsLog();
             }
         }
-        
+
         // start visualizer, if asked for
         GraphVisualizer graphVisualizer = configurator.visualizerFromParameters();
         if (graphVisualizer != null) {
             graphVisualizer.run();
         }
-        
+
         // start web server, if asked for
         GrizzlyServer grizzlyServer = configurator.serverFromParameters();
         if (grizzlyServer != null) {
@@ -89,15 +101,79 @@ public class OTPMain {
                     return;
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
-                    LOG.error("An uncaught {} occurred inside OTP. Restarting server.", 
-                              throwable.getClass().getSimpleName());
+                    LOG.error("An uncaught {} occurred inside OTP. Restarting server.", throwable
+                            .getClass().getSimpleName());
                 }
             }
         }
-        
-        if( graphBuilder==null && graphVisualizer==null && grizzlyServer==null ){
-        	LOG.info( "Nothing to do. Use --help to see available tasks.");;
+
+        if (graphBuilder == null && graphVisualizer == null && grizzlyServer == null) {
+            LOG.info("Nothing to do. Use --help to see available tasks.");
+            ;
         }
-        
+
+        configurator.showANStats();
+        if (params.pnrRoute) {
+            LOG.info("Routing");
+            GraphService gs = configurator.getGraphService();
+
+            RoutingRequest rq = configurator.getServer().routingRequest.clone();
+            rq.numItineraries = 2;
+            rq.arriveBy = true;
+            // marelli -> s babila
+            rq.from = new GenericLocation(45.506309, 9.226168);
+            rq.to = new GenericLocation(45.471710, 9.201963);
+//          rq.from = new GenericLocation(45.489654, 9.215640);
+//          rq.to = new GenericLocation(45.475893, 9.206444);
+            rq.dateTime = System.currentTimeMillis() / 1000;
+            rq.modes = new TraverseModeSet(TraverseMode.WALK);
+            rq.parkAndRide = true;
+            rq.twoway = true;
+            rq.setRoutingContext(gs.getRouter().graph);
+            Router router = configurator.getServer().getRouter(rq.routerId);
+//            for (int i=0;i<10;i++) {
+            long time = System.currentTimeMillis();
+            TripPlan plan = router.planGenerator.generate(rq);
+            long time2 = System.currentTimeMillis();
+            LOG.info("Took " + (time2 - time) + " millis");
+//            }
+            if (plan != null) {
+                for (Itinerary itinerary : plan.itinerary) {
+                    LOG.info("======");
+                    LOG.info("Itinerary " + itinerary.duration + " " + itinerary.transfers);
+                    LOG.info("======");
+                    for (Leg leg : itinerary.legs) {
+                        SimpleDateFormat formatter = new SimpleDateFormat("dd MM yyyy HH:mm:ss");
+                        LOG.info("Leg From " + leg.from.lat + "," + leg.from.lon + " at "
+                                + formatter.format(leg.startTime.getTime()));
+                        LOG.info("Leg To " + leg.to.lat + "," + leg.to.lon + " at "
+                                + formatter.format(leg.endTime.getTime()));
+                        LOG.info("By " + leg.mode);
+                        if (leg.routeType == null || leg.routeType < 0) {
+                            // non transit
+                            for (WalkStep step : leg.walkSteps) {
+                                LOG.info(leg.mode + " " + step.absoluteDirection.toString()
+                                        + " on " + step.streetName);
+                            }
+                        } else {
+                            // transit
+                        }
+                        // LOG.info(leg.toString());
+                    }
+                    // assertEquals(AbsoluteDirection.NORTH, step0.absoluteDirection);
+                    // assertEquals("NE 43RD AVE", step0.streetName);
+                    // assertEquals("NE 43RD AVE", step2.streetName);
+                    // assertEquals(RelativeDirection.LEFT, step2.relativeDirection);
+                    // assertTrue(step2.stayOn);
+                    // assertEquals("From", response.getPlan().from.orig);
+                    // assertEquals("From", leg.from.orig);
+                    // leg = itinerary.legs.get(itinerary.legs.size() - 1);
+                    // assertEquals("To", leg.to.orig);
+                    // assertEquals("To", response.getPlan().to.orig);
+                }
+            }
+            LOG.info("Done routing");
+        }
+
     }
 }

@@ -56,7 +56,13 @@ public class RoutingRequest implements Cloneable, Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(RoutingRequest.class);
 
     private static final int CLAMP_ITINERARIES = 3;
+    
+    public enum PNRStatus {
+        TRANSIT_LEG, CAR_LEG, WALK_LEG, PNR_TRANSFER
+    }
 
+    public PNRStatus pnrStatus;
+    
     /**
      * The model that computes turn/traversal costs.
      * 
@@ -108,6 +114,9 @@ public class RoutingRequest implements Cloneable, Serializable {
 
     /** The epoch date/time that the trip should depart (or arrive, for requests where arriveBy is true) */
     public long dateTime = new Date().getTime() / 1000;
+    
+    /** The epoch date/time that the trip should depart (or arrive, for requests where arriveBy is true) */
+    public long returnDateTime = new Date().getTime() / 1000;
 
     /** Whether the trip should depart at dateTime (false, the default), or arrive at dateTime. */
     public boolean arriveBy = false;
@@ -132,6 +141,8 @@ public class RoutingRequest implements Cloneable, Serializable {
     public double carSpeed;
 
     public Locale locale = new Locale("en", "US");
+    
+    public boolean twoway = false;
 
     /**
      * An extra penalty added on transfers (i.e. all boardings except the first one).

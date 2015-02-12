@@ -22,6 +22,7 @@ import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.algorithm.NegativeWeightException;
 import org.opentripplanner.routing.automata.AutomatonState;
+import org.opentripplanner.routing.core.RoutingRequest.PNRStatus;
 import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.TablePatternEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -35,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class State implements Cloneable {
+        
     /* Data which is likely to change at most traversals */
     
     // the current time at this state, in milliseconds
@@ -46,6 +48,9 @@ public class State implements Cloneable {
 
     // accumulated weight up to this state
     public double weight;
+    
+    // PNR node that is being used in path
+    public Vertex pnrNode;
 
     // associate this state with a vertex in the graph
     protected Vertex vertex;
@@ -120,6 +125,8 @@ public class State implements Cloneable {
         this.stateData.usingRentedBike = false;
         /* If the itinerary is to begin with a car that is left for transit, the initial state of arriveBy searches is
            with the car already "parked" and in WALK mode. Otherwise, we are in CAR mode and "unparked". */
+        if (options.twoway)
+            setCarParked(!options.arriveBy);
         if (options.parkAndRide || options.kissAndRide) {
             this.stateData.carParked = options.arriveBy;
             this.stateData.nonTransitMode = this.stateData.carParked ? TraverseMode.WALK : TraverseMode.CAR;
@@ -137,6 +144,10 @@ public class State implements Cloneable {
         }
         stateData.routeSequence = new AgencyAndId[0];
     }
+    
+    public PNRStatus getPNRStatus() {
+        return stateData.opt.pnrStatus;
+    }
 
     /**
      * Create a state editor to produce a child of this state, which will be the result of
@@ -147,6 +158,18 @@ public class State implements Cloneable {
      */
     public StateEditor edit(Edge e) {
         return new StateEditor(this, e);
+    }
+    
+    public void setCarParked(boolean parked) {
+        stateData.carParked = parked;
+        if (parked)
+            stateData.nonTransitMode = TraverseMode.WALK;
+        else
+            stateData.nonTransitMode = TraverseMode.CAR;
+    }
+    
+    public void setOptions(RoutingRequest options) {
+        stateData.opt = options;
     }
 
     protected State clone() {
@@ -281,13 +304,17 @@ public class State implements Cloneable {
      * @return True if the state at vertex can be the end of path.
      */
     public boolean isFinal() {
+        return isFinal(false);
+    }
+    
+    public boolean isFinal(boolean twoway) {
         // When drive-to-transit is enabled, we need to check whether the car has been parked (or whether it has been picked up in reverse).
         boolean parkAndRide = stateData.opt.parkAndRide || stateData.opt.kissAndRide;
         boolean bikeParkAndRide = stateData.opt.bikeParkAndRide;
         boolean bikeRentingOk = false;
         boolean bikeParkAndRideOk = false;
         boolean carParkAndRideOk = false;
-        if (stateData.opt.arriveBy) {
+        if (stateData.opt.arriveBy || twoway) {
             bikeRentingOk = !isBikeRenting();
             bikeParkAndRideOk = !bikeParkAndRide || !isBikeParked();
             carParkAndRideOk = !parkAndRide || !isCarParked();
@@ -861,5 +888,9 @@ public class State implements Cloneable {
 
     public double getOptimizedElapsedTimeSeconds() {
         return getElapsedTimeSeconds() - stateData.initialWaitTime;
+    }
+
+    public void setParkAndRide(boolean b) {
+        stateData.opt.parkAndRide = b;
     }
 }

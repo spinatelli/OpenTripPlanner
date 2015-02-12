@@ -115,5 +115,9 @@ public class StateData implements Cloneable {
             throw new IllegalStateException("This is not happening");
         }
     }
+    
+    public boolean isArriveBy() {
+        return opt.arriveBy;
+    }
 
 }

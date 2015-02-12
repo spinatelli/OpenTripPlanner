@@ -13,9 +13,13 @@
 
 package org.opentripplanner.routing.vertextype;
 
+import java.util.List;
+
 import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+
+import com.beust.jcommander.internal.Lists;
 
 /**
  * A vertex for a park and ride area.
@@ -30,6 +34,16 @@ public class ParkAndRideVertex extends Vertex {
     private static final long serialVersionUID = MavenVersion.VERSION.getUID();
 
     private String id;
+
+    /**
+     * The set of access nodes for this street node, needed for 2-way PNR routing
+     */
+    public List<Vertex> accessNodes = Lists.newArrayList();
+
+    /**
+     * The set of backward access nodes for this street node, needed for 2-way PNR routing
+     */
+    public List<Vertex> backwardAccessNodes = Lists.newArrayList();
 
     public ParkAndRideVertex(Graph g, String label, String id, double x, double y, String name) {
         super(g, label, x, y, name);

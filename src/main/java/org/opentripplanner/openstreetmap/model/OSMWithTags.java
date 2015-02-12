@@ -279,6 +279,10 @@ public class OSMWithTags {
         return noThruTraffic;
     }
     
+    public boolean isParking() {
+        return isTag("amenity", "parking");
+    }
+    
     /**
      * @return True if this node / area is a park and ride.
      */

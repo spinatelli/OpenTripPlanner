@@ -30,6 +30,8 @@ public abstract class AbstractShortestPathTree implements ShortestPathTree {
 
     public final RoutingRequest options;
     
+    protected boolean twoway = false;
+    
     protected AbstractShortestPathTree () {
         this.options = null;
     }
@@ -50,7 +52,7 @@ public abstract class AbstractShortestPathTree implements ShortestPathTree {
             return Collections.emptyList();
         List<GraphPath> ret = new LinkedList<GraphPath>();
         for (State s : stateList) {
-            if (s.isFinal() && s.allPathParsersAccept())
+            if (s.isFinal(twoway) && s.allPathParsersAccept())
                 ret.add(new GraphPath(s, optimize));
         }
         return ret;

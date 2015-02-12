@@ -72,6 +72,9 @@ public class OSMDatabase implements OpenStreetMapContentHandler {
 
     /* Map of all bike parking nodes, keyed by their OSM ID */
     private Map<Long, OSMNode> bikeParkingNodes = new HashMap<Long, OSMNode>();
+    
+    /* Map of all parking nodes, keyed by their OSM ID */
+    private Map<Long, OSMNode> parkingNodes = new HashMap<Long, OSMNode>();
 
     /* Map of all non-area ways keyed by their OSM ID */
     private Map<Long, OSMWay> waysById = new HashMap<Long, OSMWay>();
@@ -155,6 +158,10 @@ public class OSMDatabase implements OpenStreetMapContentHandler {
         return Collections.unmodifiableCollection(bikeParkingNodes.values());
     }
 
+    public Collection<OSMNode> getParkingNodes() {
+        return Collections.unmodifiableCollection(parkingNodes.values());
+    }
+
     public Collection<Area> getWalkableAreas() {
         return Collections.unmodifiableCollection(walkableAreas);
     }
@@ -211,6 +218,10 @@ public class OSMDatabase implements OpenStreetMapContentHandler {
         }
         if (node.isBikeParking()) {
             bikeParkingNodes.put(node.getId(), node);
+            return;
+        }
+        if (node.isParking()) {
+            parkingNodes.put(node.getId(), node);
             return;
         }
         if (!(waysNodeIds.contains(node.getId()) || areaNodeIds.contains(node.getId()) || node
@@ -727,6 +738,7 @@ public class OSMDatabase implements OpenStreetMapContentHandler {
             walkableAreas.add(area);
         }
         // Please note: the same area can be both car P+R AND bike park.
+//        if (area.parent.isParkAndRide() || area.parent.isParking()) {
         if (area.parent.isParkAndRide()) {
             parkAndRideAreas.add(area);
         }

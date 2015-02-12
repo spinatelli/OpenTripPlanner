@@ -13,10 +13,7 @@
 
 package org.opentripplanner.routing.vertextype;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -36,26 +33,37 @@ public class IntersectionVertex extends StreetVertex {
     public boolean trafficLight;
 
     /**
-     * Is this a free-flowing intersection, i.e. should it have no delay at all? e.g., freeway ramps, &c.
+     * Is this a free-flowing intersection, i.e. should it have no delay at all? e.g., freeway
+     * ramps, &c.
      */
     public boolean freeFlowing;
-    
+
     /**
      * The set of access nodes for this street node, needed for 2-way PNR routing
      */
-    public List<Vertex> accessNodes;
-    
+    public List<Vertex> accessNodes = Lists.newArrayList();
+
     /**
      * The set of backward access nodes for this street node, needed for 2-way PNR routing
      */
-    public List<Vertex> backwardAccessNodes;
+    public List<Vertex> backwardAccessNodes = Lists.newArrayList();
+    
+//  /**
+//   * The set of access nodes for this street node, needed for 2-way PNR routing
+//   */
+    public List<Vertex> pnrNodes = Lists.newArrayList();
+//  
+//  /**
+//   * The set of backward access nodes for this street node, needed for 2-way PNR routing
+//   */
+//    public List<Vertex> backwardPnrNodes = Lists.newArrayList();
 
     /** Returns true if this.freeFlowing or if it appears that this vertex is free-flowing */
     public boolean inferredFreeFlowing() {
         if (this.freeFlowing) {
             return true;
         }
-        
+
         return getDegreeIn() == 1 && getDegreeOut() == 1 && !this.trafficLight;
     }
 
@@ -63,8 +71,6 @@ public class IntersectionVertex extends StreetVertex {
         super(g, label, x, y, name);
         freeFlowing = false;
         trafficLight = false;
-        accessNodes = Lists.newArrayList();
-        backwardAccessNodes = Lists.newArrayList();
     }
 
     public IntersectionVertex(Graph g, String label, double x, double y) {

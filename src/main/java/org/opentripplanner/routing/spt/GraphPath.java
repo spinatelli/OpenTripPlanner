@@ -168,7 +168,7 @@ public class GraphPath {
     public boolean equals(Object o) {
         if (o instanceof GraphPath) {
             GraphPath go = (GraphPath) o;
-            return go.getTrips().equals(getTrips());
+            return (go.getTrips().equals(getTrips()) && !go.getTrips().isEmpty()) || states.equals(go.states);
         }
         return false;
     }
