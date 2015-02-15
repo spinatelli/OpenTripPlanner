@@ -88,7 +88,7 @@ public class PNRNodeGraphBuilderImpl implements GraphBuilder {
         Map<Vertex, Map<Vertex, Double>> profiles = new HashMap<Vertex, Map<Vertex, Double>>();
         long time, time2;
         RoutingRequest options = new RoutingRequest();
-        LOG.info("Size of PNR candidate set is "+ stopsize);
+        LOG.info("Size of PNR candidate set is " + stopsize);
         stopsize = 0;
         for (ParkAndRideVertex ts : Iterables.filter(vertices, ParkAndRideVertex.class)) {
             // find out if the transit stop is linked to the street
@@ -157,7 +157,7 @@ public class PNRNodeGraphBuilderImpl implements GraphBuilder {
             stopsize++;
         }
 
-        LOG.info("Size of PNR set is "+ stopsize);
+        LOG.info("Size of PNR set is " + stopsize);
         for (ParkAndRideVertex ts : Iterables.filter(vertices, ParkAndRideVertex.class)) {
             // find out if the transit stop is linked to the street
             boolean linkedToStreet = false;
@@ -223,24 +223,16 @@ public class PNRNodeGraphBuilderImpl implements GraphBuilder {
 
         LOG.info("Computed " + counter + " out of " + stopsize);
         counter = 0;
-        int bwd = 0;
         int fwd = 0;
         for (IntersectionVertex iv : Iterables.filter(vertices, IntersectionVertex.class)) {
-            if (iv.pnrNodes != null && iv.pnrNodes.size() > 0) {
-                // LOG.info("PNR Nodes = " + iv.pnrNodes.size());
+            if (iv.pnrNodes != null && iv.pnrNodes.size() > 0)
                 fwd++;
-            }
-//            if (iv.backwardPnrNodes != null && iv.backwardPnrNodes.size() > 0) {
-//                // LOG.info("Backward PNR Nodes = " + iv.backwardPnrNodes.size());
-//                bwd++;
-//            }
             counter++;
         }
 
         LOG.info(fwd + " out of " + counter + " have PNR nodes");
-//        LOG.info(bwd + " out of " + counter + " have bwd PNR nodes");
 
-        LOG.info("Done computing access nodes for street nodes...");
+        LOG.info("Done computing PNR nodes for street nodes...");
     }
 
     private boolean shouldLog(int counter, int stopsize) {

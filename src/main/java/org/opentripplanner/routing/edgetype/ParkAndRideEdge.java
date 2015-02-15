@@ -70,14 +70,22 @@ public class ParkAndRideEdge extends Edge {
                     throw new IllegalStateException("Can't drive 2 cars");
                 }
             }
+            StateEditor s1 = s0.edit(this);
+            int time = request.carDropoffTime;
+            s1.incrementWeight(time);
+            s1.incrementTimeInSeconds(time);
+            s1.setCarParked(!s0.isCarParked());
+            s1.setBackMode(TraverseMode.LEG_SWITCH);
+            return s1.makeState();
+        } else {
+            StateEditor s1 = s0.edit(this);
+            int time = request.carDropoffTime;
+            s1.incrementWeight(time);
+            s1.incrementTimeInSeconds(time);
+//            s1.setCarParked(!s0.isCarParked());
+            s1.setBackMode(TraverseMode.LEG_SWITCH);
+            return s1.makeState();
         }
-        StateEditor s1 = s0.edit(this);
-        int time = request.carDropoffTime;
-        s1.incrementWeight(time);
-        s1.incrementTimeInSeconds(time);
-        s1.setCarParked(!s0.isCarParked());
-        s1.setBackMode(TraverseMode.LEG_SWITCH);
-        return s1.makeState();
     }
 
     @Override

@@ -85,6 +85,8 @@ public class StreetBikeParkLink extends Edge {
         // Assume bike park are more-or-less on-street
         s1.incrementTimeInSeconds(1);
         s1.incrementWeight(1);
+        if (s0.getOptions().twoway)
+            s1.setBikeParkAndRide(false);
         // Do not force any mode, will use the latest one (walking bike or bike)
         return s1.makeState();
     }

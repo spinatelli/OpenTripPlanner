@@ -15,6 +15,7 @@ package org.opentripplanner.standalone;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.Random;
 
 import org.opentripplanner.api.model.Itinerary;
 import org.opentripplanner.api.model.Leg;
@@ -26,6 +27,7 @@ import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
+import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.visualizer.GraphVisualizer;
@@ -51,6 +53,25 @@ public class OTPMain {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTPMain.class);
 
+    public static class BBox {
+        public double minLat = -90;
+        public double minLon = -180;
+        public double maxLat = 90;
+        public double maxLon = 180;
+        
+        public BBox(String s) {
+            String[] parts = s.split(",");
+            minLon = Double.parseDouble(parts[0]);
+            minLat = Double.parseDouble(parts[1]);
+            maxLon = Double.parseDouble(parts[2]);
+            maxLat = Double.parseDouble(parts[3]);
+        }
+        
+        public String toString() {
+            return minLat+","+minLon+","+maxLat+","+maxLon;
+        }
+    }
+    
     public static void main(String[] args) {
         /* Parse and validate command line parameters */
         CommandLineParameters params = new CommandLineParameters();
@@ -113,67 +134,103 @@ public class OTPMain {
         }
 
         configurator.showANStats();
-        if (params.pnrRoute) {
-            LOG.info("Routing");
-            GraphService gs = configurator.getGraphService();
 
-            RoutingRequest rq = configurator.getServer().routingRequest.clone();
-            rq.numItineraries = 2;
-            rq.arriveBy = true;
-            // marelli -> s babila
-            rq.from = new GenericLocation(45.506309, 9.226168);
-            rq.to = new GenericLocation(45.471710, 9.201963);
-//          rq.from = new GenericLocation(45.489654, 9.215640);
-//          rq.to = new GenericLocation(45.475893, 9.206444);
-            rq.dateTime = System.currentTimeMillis() / 1000;
-            rq.modes = new TraverseModeSet(TraverseMode.WALK);
-            rq.parkAndRide = true;
-            rq.twoway = true;
-            rq.setRoutingContext(gs.getRouter().graph);
-            Router router = configurator.getServer().getRouter(rq.routerId);
-//            for (int i=0;i<10;i++) {
-            long time = System.currentTimeMillis();
-            TripPlan plan = router.planGenerator.generate(rq);
-            long time2 = System.currentTimeMillis();
-            LOG.info("Took " + (time2 - time) + " millis");
-//            }
-            if (plan != null) {
-                for (Itinerary itinerary : plan.itinerary) {
-                    LOG.info("======");
-                    LOG.info("Itinerary " + itinerary.duration + " " + itinerary.transfers);
-                    LOG.info("======");
-                    for (Leg leg : itinerary.legs) {
-                        SimpleDateFormat formatter = new SimpleDateFormat("dd MM yyyy HH:mm:ss");
-                        LOG.info("Leg From " + leg.from.lat + "," + leg.from.lon + " at "
-                                + formatter.format(leg.startTime.getTime()));
-                        LOG.info("Leg To " + leg.to.lat + "," + leg.to.lon + " at "
-                                + formatter.format(leg.endTime.getTime()));
-                        LOG.info("By " + leg.mode);
-                        if (leg.routeType == null || leg.routeType < 0) {
-                            // non transit
-                            for (WalkStep step : leg.walkSteps) {
-                                LOG.info(leg.mode + " " + step.absoluteDirection.toString()
-                                        + " on " + step.streetName);
-                            }
-                        } else {
-                            // transit
-                        }
-                        // LOG.info(leg.toString());
+        if (params.pnrRoute) {
+            BBox srcBox = new BBox(configurator.getSrcBBox());
+            BBox tgtBox = new BBox(configurator.getTgtBBox());
+            Random r = new Random();
+//            double minLat = 45.46, minLon = 9.18, maxLat = 45.56, maxLon = 9.29;
+            GraphService gs = configurator.getGraphService();
+            
+            LOG.info("Routing");
+            long avg = 0;
+            long avgDuration = 0;
+            long max = 0;
+            long min = Long.MAX_VALUE;
+            int i=0;
+            int skipped = 0;
+//            for (;i<10;i++) {
+
+                RoutingRequest rq = configurator.getServer().routingRequest.clone();
+                rq.numItineraries = 1;
+                rq.arriveBy = true;
+                rq.dateTime = System.currentTimeMillis() / 1000;
+                rq.returnDateTime = System.currentTimeMillis() / 1000;
+                rq.modes = new TraverseModeSet(TraverseMode.WALK);
+                rq.parkAndRide = true;
+                rq.twoway = true;
+                rq.from = generateLocation(r, srcBox);
+                rq.to = generateLocation(r, tgtBox);
+                rq.setRoutingContext(gs.getRouter().graph);
+                Router router = configurator.getServer().getRouter(rq.routerId);
+                LOG.info("From "+ rq.from.toDescriptiveString());
+                LOG.info("To "+ rq.to.toDescriptiveString());
+                try {
+                    long time = System.currentTimeMillis();
+                    TripPlan plan = router.planGenerator.generate(rq);
+                    long time2 = System.currentTimeMillis();
+                    long t = time2-time;
+                    LOG.info("Took " + t + " millis");
+                    avg += t;
+                    max = t > max ? t : max;
+                    min = t < min? t : min;
+                    t = -1;
+                    if (plan != null) {
+                        t = plan.itinerary.get(0).duration + plan.itinerary.get(1).duration;
+                        avgDuration += t;
                     }
-                    // assertEquals(AbsoluteDirection.NORTH, step0.absoluteDirection);
-                    // assertEquals("NE 43RD AVE", step0.streetName);
-                    // assertEquals("NE 43RD AVE", step2.streetName);
-                    // assertEquals(RelativeDirection.LEFT, step2.relativeDirection);
-                    // assertTrue(step2.stayOn);
-                    // assertEquals("From", response.getPlan().from.orig);
-                    // assertEquals("From", leg.from.orig);
-                    // leg = itinerary.legs.get(itinerary.legs.size() - 1);
-                    // assertEquals("To", leg.to.orig);
-                    // assertEquals("To", response.getPlan().to.orig);
+                    LOG.info("Iteration "+i+" time "+t);
+                } catch (PathNotFoundException e) {
+                    LOG.error("Path not found");
+                    skipped++;
+                }
+//                printPlan(plan);
+//             }
+            LOG.info("Done routing, skipped "+skipped);
+            avg = avg/(i-skipped);
+            avgDuration = avgDuration/(i-skipped);
+            LOG.info("Average routing time "+avg+" ms = "+avg/1000+" s");
+            LOG.info("Minimum routing time "+min+" ms = "+min/1000+" s");
+            LOG.info("Maximum routing time "+max+" ms = "+max/1000+" s");
+            LOG.info("Average duration "+avgDuration+" ms = "+avgDuration/1000+" s");
+        }
+    }
+    
+    private static void printPlan(TripPlan plan) {
+        if (plan == null)
+            return;
+        for (Itinerary itinerary : plan.itinerary) {
+            LOG.info("======");
+            LOG.info("Itinerary " + itinerary.duration + " " + itinerary.transfers);
+            LOG.info("======");
+            for (Leg leg : itinerary.legs) {
+                SimpleDateFormat formatter = new SimpleDateFormat("dd MM yyyy HH:mm:ss");
+                LOG.info("Leg From " + leg.from.lat + "," + leg.from.lon + " at "
+                        + formatter.format(leg.startTime.getTime()));
+                LOG.info("Leg To " + leg.to.lat + "," + leg.to.lon + " at "
+                        + formatter.format(leg.endTime.getTime()));
+                LOG.info("By " + leg.mode);
+                if (leg.routeType == null || leg.routeType < 0) {
+                    // non transit
+                    for (WalkStep step : leg.walkSteps) {
+                        LOG.info(leg.mode + " " + step.absoluteDirection.toString()
+                                + " on " + step.streetName);
+                    }
+                } else {
+                    // transit
                 }
             }
-            LOG.info("Done routing");
         }
+    }
 
+    private static GenericLocation generateLocation(Random r, BBox bbox) {
+        // marelli -> s babila
+        // rq.from = new GenericLocation(45.506309, 9.226168);
+        // rq.to = new GenericLocation(45.471710, 9.201963);
+        // rq.from = new GenericLocation(45.489654, 9.215640);
+        // rq.to = new GenericLocation(45.475893, 9.206444);
+        double lat = bbox.minLat + (bbox.maxLat - bbox.minLat) * r.nextDouble();
+        double lon = bbox.minLon + (bbox.maxLon - bbox.minLon) * r.nextDouble();
+        return new GenericLocation(lat, lon);
     }
 }

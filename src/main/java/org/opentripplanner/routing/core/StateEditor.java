@@ -287,6 +287,14 @@ public class StateEditor {
         cloneStateDataAsNeeded();
         child.stateData.backMode = mode;
     }
+    
+    public void setParkAndRide(boolean pnr) {
+        child.stateData.opt.parkAndRide = pnr;
+    }
+    
+    public void setBikeParkAndRide(boolean bpnr) {
+        child.stateData.opt.bikeParkAndRide = bpnr;
+    }
 
     public void setBackWalkingBike (boolean walkingBike) {
         if (walkingBike == child.stateData.backWalkingBike)

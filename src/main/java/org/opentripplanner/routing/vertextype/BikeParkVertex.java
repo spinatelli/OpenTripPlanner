@@ -13,10 +13,15 @@
 
 package org.opentripplanner.routing.vertextype;
 
+import java.util.Collection;
+import java.util.List;
+
 import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.routing.bike_park.BikePark;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+
+import com.beust.jcommander.internal.Lists;
 
 /**
  * A vertex for a bike park.
@@ -38,6 +43,16 @@ public class BikeParkVertex extends Vertex {
     private int spacesAvailable;
 
     private String id;
+
+    /**
+     * The set of access nodes for this street node, needed for 2-way PNR routing
+     */
+    public List<Vertex> accessNodes = Lists.newArrayList();
+
+    /**
+     * The set of backward access nodes for this street node, needed for 2-way PNR routing
+     */
+    public List<Vertex> backwardAccessNodes = Lists.newArrayList();
 
     public BikeParkVertex(Graph g, BikePark bikePark) {
         super(g, "bike park " + bikePark.id, bikePark.x, bikePark.y, bikePark.name);

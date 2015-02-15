@@ -58,7 +58,11 @@ public class RoutingRequest implements Cloneable, Serializable {
     private static final int CLAMP_ITINERARIES = 3;
     
     public enum PNRStatus {
-        TRANSIT_LEG, CAR_LEG, WALK_LEG, PNR_TRANSFER
+        TRANSIT_LEG, CAR_LEG, WALK_LEG, PNR_TRANSFER, BICYCLE_LEG;
+
+        public boolean isFinal() {
+            return this == PNRStatus.CAR_LEG || this == BICYCLE_LEG;
+        }
     }
 
     public PNRStatus pnrStatus;

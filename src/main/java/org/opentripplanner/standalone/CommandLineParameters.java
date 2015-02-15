@@ -121,6 +121,14 @@ public class CommandLineParameters implements Cloneable {
     @Parameter(names = {"--pnrRoute"},
             description = "Route with PNR nodes")
     public boolean pnrRoute = false;
+    
+    @Parameter(names = {"--bboxSrc"},
+            description = "Source location bounding box")
+    public String bboxSrc = "";
+    
+    @Parameter(names = {"--bboxTgt"},
+            description = "Target location bounding box")
+    public String bboxTgt = "";
 
     /* Options for the server sub-task. */
 

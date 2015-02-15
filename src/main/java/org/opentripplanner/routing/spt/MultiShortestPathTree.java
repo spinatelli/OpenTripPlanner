@@ -117,6 +117,10 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
             return false;
         }
         // Multi-state (bike rental, P+R) - no domination for different states
+        if (thisState.getPNRStatus() != other.getPNRStatus())
+            return false;
+        if (thisState.getBackMode() != other.getBackMode())
+            return false;
         if (thisState.isBikeRenting() != other.isBikeRenting())
             return false;
         if (thisState.isCarParked() != other.isCarParked())
@@ -124,6 +128,8 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
         if (thisState.isBikeParked() != other.isBikeParked())
             return false;
         if (thisState.stateData.isArriveBy() != other.stateData.isArriveBy())
+            return false;
+        if (thisState.getBackState().equals(other.getBackState()))
             return false;
 
         Graph graph = thisState.getOptions().rctx.graph;

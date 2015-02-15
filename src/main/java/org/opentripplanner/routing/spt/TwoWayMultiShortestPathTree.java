@@ -16,11 +16,16 @@ package org.opentripplanner.routing.spt;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,35 +38,52 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
     private ShortestPathTree in;
 
     private RoutingRequest options;
+
+    private Vertex from;
+
+    private Vertex to;
     
     @Override
     public List<GraphPath> getPaths() {
-        return getPaths(options.getRoutingContext().target, true);
+        return getPaths(to, true);
     }
     
-    private List<GraphPath> getSPTPaths(ShortestPathTree spt, Vertex dest, boolean optimize) {
+    private List<GraphPath> getSPTPaths(ShortestPathTree spt, Vertex dest, Map<Vertex, GraphPath> map, boolean optimize) {
         List<? extends State> stateList = spt.getStates(dest);
         if (stateList == null)
             return Collections.emptyList();
         List<GraphPath> ret = new LinkedList<GraphPath>();
         for (State s : stateList) {
-            if (s.isFinal(true) && s.allPathParsersAccept())
-                ret.add(new GraphPath(s, optimize));
+            if (s.isFinal(true) && s.allPathParsersAccept()) {
+                GraphPath gp = new GraphPath(s, optimize);
+                ret.add(gp);
+                map.put(s.pnrNode, gp);
+                State v = s;
+                while (v.getBackState() != null) {
+                    if (v.getBackMode() == TraverseMode.BUS || v.getBackMode() == TraverseMode.BUSISH)
+                        LOG.info("used BUS");
+                    v = v.getBackState();
+                }
+            }
         }
         return ret;
     }
     
-    @Override
+    @Override    
     public List<GraphPath> getPaths(Vertex dest, boolean optimize) {
-        List<GraphPath> pathsOut = getSPTPaths(out, dest, optimize);
-        List<GraphPath> pathsIn = getSPTPaths(in, dest, optimize);
+        Map<Vertex, GraphPath> mOut = new HashMap<Vertex, GraphPath>();
+        List<GraphPath> pathsOut = getSPTPaths(out, from, mOut, optimize);
+        Map<Vertex, GraphPath> mIn = new HashMap<Vertex, GraphPath>();
+        List<GraphPath> pathsIn = getSPTPaths(in, from, mIn, optimize);
+        
         if (pathsOut.isEmpty() || pathsIn.isEmpty())
             return Collections.emptyList();
         List<GraphPath> ret = new LinkedList<GraphPath>();
-        
-        for (int i = 0; i<pathsOut.size() && i<pathsIn.size(); ++i) {
-            ret.add(pathsOut.get(i));
-            ret.add(pathsIn.get(i));
+        Set<Vertex> intersect = mOut.keySet();
+        intersect.retainAll(mIn.keySet());
+        for (Vertex v: intersect) {
+          ret.add(mOut.get(v));
+          ret.add(mIn.get(v));
         }
         return ret;
     }
@@ -83,10 +105,12 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
             return new GraphPath(s, optimize);
     }
 
-    public TwoWayMultiShortestPathTree(RoutingRequest options, ShortestPathTree out, ShortestPathTree in) {
+    public TwoWayMultiShortestPathTree(RoutingRequest options, ShortestPathTree out, ShortestPathTree in, Vertex from, Vertex to) {
         this.options = options;
         this.out = out;
         this.in = in;
+        this.from = from;
+        this.to = to;
     }
 
     /****

@@ -134,12 +134,16 @@ public class ParkAndRideLinkEdge extends Edge {
             s1.incrementWeight(walkTime);
             s1.incrementWalkDistance(linkDistance);
             s1.setBackMode(TraverseMode.WALK);
+//            if (s0.getOptions().twoway && !back)
+//                s1.setParkAndRide(false);
         } else if (mode == TraverseMode.CAR) {
             // Driving
             double driveTime = linkDistance * DRIVE_OBSTRUCTION_FACTOR / DRIVE_SPEED_MS;
             s1.incrementTimeInSeconds((int) Math.round(driveTime));
             s1.incrementWeight(driveTime);
             s1.setBackMode(TraverseMode.CAR);
+//            if (s0.getOptions().twoway && back)
+//                s1.setParkAndRide(false);
         } else {
             // Can't cycle in/out a P+R.
             return null;

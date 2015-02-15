@@ -138,7 +138,10 @@ public class RetryingPathServiceImpl implements PathService {
             LOG.info("SPT provides {} paths to target.", somePaths.size());
 
             /* First, accumulate any new paths found into the list of itineraries. */
+            int i=0;
             for (GraphPath path : somePaths) {
+                if (i>1)
+                    break;
                 if ( ! paths.contains(path)) {
                     if (path.getWalkDistance() > maxWalk) {
                         maxWalk = path.getWalkDistance() * 1.25;
@@ -157,6 +160,7 @@ public class RetryingPathServiceImpl implements PathService {
                         }
                     }           
                 }
+                i++;
             }
             LOG.debug("{} / {} itineraries", paths.size(), currOptions.numItineraries);
             if (options.rctx.aborted) {

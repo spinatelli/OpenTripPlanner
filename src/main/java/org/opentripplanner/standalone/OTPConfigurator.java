@@ -281,6 +281,14 @@ public class OTPConfigurator {
         graphBuilder.serializeGraph = (!params.inMemory) || params.preFlight;
         return graphBuilder;
     }
+    
+    public String getSrcBBox() {
+        return params.bboxSrc;
+    }
+    
+    public String getTgtBBox() {
+        return params.bboxTgt;
+    }
 
     public void showANStats() {
         if (params.anStats) {

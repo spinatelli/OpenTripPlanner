@@ -314,6 +314,7 @@ public class State implements Cloneable {
         boolean bikeRentingOk = false;
         boolean bikeParkAndRideOk = false;
         boolean carParkAndRideOk = false;
+        boolean twowayOk = !twoway || pnrNode != null;
         if (stateData.opt.arriveBy || twoway) {
             bikeRentingOk = !isBikeRenting();
             bikeParkAndRideOk = !bikeParkAndRide || !isBikeParked();
@@ -321,9 +322,9 @@ public class State implements Cloneable {
         } else {
             bikeRentingOk = !isBikeRenting();
             bikeParkAndRideOk = !bikeParkAndRide || isBikeParked();
-            carParkAndRideOk = !parkAndRide || isCarParked();
+            carParkAndRideOk = !parkAndRide || (!twoway && isCarParked()) || (twoway && isCarParked());
         }
-        return bikeRentingOk && bikeParkAndRideOk && carParkAndRideOk;
+        return bikeRentingOk && bikeParkAndRideOk && carParkAndRideOk && twowayOk;
     }
 
     public Stop getPreviousStop() {
@@ -892,5 +893,9 @@ public class State implements Cloneable {
 
     public void setParkAndRide(boolean b) {
         stateData.opt.parkAndRide = b;
+    }
+
+    public void setBikeParked(boolean b) {
+        stateData.opt.bikeParkAndRide = b;
     }
 }
