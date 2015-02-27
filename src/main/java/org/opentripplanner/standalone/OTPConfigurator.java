@@ -30,6 +30,7 @@ import org.opentripplanner.analyst.request.TileCache;
 import org.opentripplanner.api.resource.PlanGenerator;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.graph_builder.impl.AccessNodeGraphBuilderImpl;
+import org.opentripplanner.graph_builder.impl.BikePNRNodeGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.DirectTransferGenerator;
 import org.opentripplanner.graph_builder.impl.EmbeddedConfigGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.GtfsGraphBuilderImpl;
@@ -63,6 +64,7 @@ import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
 import org.opentripplanner.routing.impl.SPTServiceFactory;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.SPTService;
+import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -214,6 +216,7 @@ public class OTPConfigurator {
             }
             OpenStreetMapGraphBuilderImpl osmBuilder = new OpenStreetMapGraphBuilderImpl(
                     osmProviders);
+            osmBuilder.staticBikeParkAndRide = true;
             DefaultStreetEdgeFactory streetEdgeFactory = new DefaultStreetEdgeFactory();
             streetEdgeFactory.useElevationData = params.elevation || (demFile != null);
             osmBuilder.edgeFactory = streetEdgeFactory;
@@ -270,12 +273,12 @@ public class OTPConfigurator {
 
         // add a new graphbuilder that adds access nodes and PNR nodes for every street node
         if (params.computeAccessNodes && hasOSM && hasGTFS) {
-            // do stuff
-//            GraphBuilder accessNodeBuilder = new ProfileAccessNodeGraphBuilderImpl();
             GraphBuilder accessNodeBuilder = new AccessNodeGraphBuilderImpl();
             graphBuilder.addGraphBuilder(accessNodeBuilder);
             GraphBuilder pnrNodeBuilder = new PNRNodeGraphBuilderImpl();
             graphBuilder.addGraphBuilder(pnrNodeBuilder);
+            GraphBuilder bikePNRNodeBuilder = new BikePNRNodeGraphBuilderImpl();
+            graphBuilder.addGraphBuilder(bikePNRNodeBuilder);
         }
 
         graphBuilder.serializeGraph = (!params.inMemory) || params.preFlight;
@@ -291,86 +294,55 @@ public class OTPConfigurator {
     }
 
     public void showANStats() {
-        if (params.anStats) {
-            Graph g = getGraphService().getRouter().graph;
-            Set<Vertex> parkings = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(g.getVertices(),
-                    ParkAndRideVertex.class)));
-//            for (Vertex p: parkings) {
-//                System.out.println(p.getLat()+","+p.getLon());
-//            }
-            int counter = 0;
-            int an = 0;
-            int ban = 0;
-            int pnr = 0;
-            int bpnr = 0;
-            int ans = 0;
-            int bans = 0;
-            int pnrs = 0;
-            int bpnrs = 0;
-            for (IntersectionVertex iv : Iterables
-                    .filter(g.getVertices(), IntersectionVertex.class)) {
-                if (iv.accessNodes != null && iv.accessNodes.size() >= 0) {
-                    // LOG.info("Access Nodes = " + iv.accessNodes.size());
-                    an++;
-                    ans += iv.accessNodes.size();
-                }
-                if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() >= 0) {
-                    // LOG.info("Access Nodes = " + iv.accessNodes.size());
-                    ban++;
-                    bans += iv.backwardAccessNodes.size();
-                }
-                if (iv.pnrNodes != null && iv.pnrNodes.size() >= 0) {
-                    // LOG.info("Access Nodes = " + iv.accessNodes.size());
-                    pnr++;
-                    pnrs += iv.pnrNodes.size();
-                }
-//                if (iv.backwardPnrNodes != null && iv.backwardPnrNodes.size() >= 0) {
-//                    // LOG.info("Access Nodes = " + iv.accessNodes.size());
-//                    bpnr++;
-//                    bpnrs += iv.backwardPnrNodes.size();
-//                }
-                counter++;
+        Graph g = getGraphService().getRouter().graph;
+        
+        int counter = 0, an = 0, ban = 0, pnr = 0, ans = 0, bans = 0, pnrs = 0;
+        for (IntersectionVertex iv : Iterables
+                .filter(g.getVertices(), IntersectionVertex.class)) {
+            if (iv.accessNodes != null && iv.accessNodes.size() >= 0) {
+                an++;
+                ans += iv.accessNodes.size();
             }
-            int s = Lists.newArrayList(Iterables
-                    .filter(g.getVertices(), TransitStop.class)).size();
-            LOG.info("Transit Stops: "+s);
-            LOG.info(an + " Intersection vertices out of " + counter + " have access nodes");
-            LOG.info("Intersection vertices with access nodes have " + (ans / an) + " access nodes on average");
-            LOG.info(ban + " Intersection vertices out of " + counter + " have backward access nodes");
-            LOG.info("Intersection vertices with backward access nodes have " + (bans / ban)
-                    + " backward access nodes on average");
-            LOG.info(pnr + " Intersection vertices out of " + counter + " have PNR nodes");
-            LOG.info("Intersection vertices with PNR nodes have " + (pnrs / pnr) + " PNR nodes on average");
-//            LOG.info(bpnr + " Intersection vertices out of " + counter + " have backward PNR nodes");
-//            LOG.info("Intersection vertices with backward PNR nodes have " + (bpnrs / bpnr)
-//                    + " backward PNR nodes on average");
-            
-            counter = 0;
-            an = 0;
-            ban = 0;
-            ans = 0;
-            bans = 0;
-            for (ParkAndRideVertex iv : Iterables
-                    .filter(g.getVertices(), ParkAndRideVertex.class)) {
-                if (iv.accessNodes != null && iv.accessNodes.size() >= 0) {
-                    // LOG.info("Access Nodes = " + iv.accessNodes.size());
-                    an++;
-                    ans += iv.accessNodes.size();
-                }
-                if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() >= 0) {
-                    // LOG.info("Access Nodes = " + iv.accessNodes.size());
-                    ban++;
-                    bans += iv.backwardAccessNodes.size();
-                }
-                counter++;
+            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() >= 0) {
+                ban++;
+                bans += iv.backwardAccessNodes.size();
             }
-
-            LOG.info(an + " PNR Nodes out of " + counter + " have access nodes");
-            LOG.info("PNR Nodes with access nodes have " + (ans / an) + " access nodes on average");
-            LOG.info(ban + " PNR Nodes out of " + counter + " have backward access nodes");
-            LOG.info("PNR Nodes with backward access nodes have " + (bans / ban)
-                    + " backward access nodes on average");
+            if (iv.pnrNodes != null && iv.pnrNodes.size() >= 0) {
+                pnr++;
+                pnrs += iv.pnrNodes.size();
+            }
+            counter++;
         }
+        int s = Lists.newArrayList(Iterables
+                .filter(g.getVertices(), TransitStop.class)).size();
+        LOG.info("Transit Stops: "+s);
+        LOG.info(an + " Intersection vertices out of " + counter + " have access nodes");
+        LOG.info("Intersection vertices with access nodes have " + (ans / an) + " access nodes on average");
+        LOG.info(ban + " Intersection vertices out of " + counter + " have backward access nodes");
+        LOG.info("Intersection vertices with backward access nodes have " + (bans / ban)
+                + " backward access nodes on average");
+        LOG.info(pnr + " Intersection vertices out of " + counter + " have PNR nodes");
+        LOG.info("Intersection vertices with PNR nodes have " + (pnrs / pnr) + " PNR nodes on average");
+        
+        counter = an = ban = ans = bans = 0;
+        for (ParkAndRideVertex iv : Iterables
+                .filter(g.getVertices(), ParkAndRideVertex.class)) {
+            if (iv.accessNodes != null && iv.accessNodes.size() >= 0) {
+                an++;
+                ans += iv.accessNodes.size();
+            }
+            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() >= 0) {
+                ban++;
+                bans += iv.backwardAccessNodes.size();
+            }
+            counter++;
+        }
+
+        LOG.info(an + " PNR Nodes out of " + counter + " have access nodes");
+        LOG.info("PNR Nodes with access nodes have " + (ans / an) + " access nodes on average");
+        LOG.info(ban + " PNR Nodes out of " + counter + " have backward access nodes");
+        LOG.info("PNR Nodes with backward access nodes have " + (bans / ban)
+                + " backward access nodes on average");
     }
 
     public GrizzlyServer serverFromParameters() {

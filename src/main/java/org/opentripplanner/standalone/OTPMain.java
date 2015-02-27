@@ -128,14 +128,10 @@ public class OTPMain {
             }
         }
 
-        if (graphBuilder == null && graphVisualizer == null && grizzlyServer == null) {
-            LOG.info("Nothing to do. Use --help to see available tasks.");
-            ;
-        }
-
-        configurator.showANStats();
-
-        if (params.pnrRoute) {
+        if (params.twoWayTest) {
+            TwoWayCsvTester csv = new TwoWayCsvTester();
+            csv.fromFile(params.testInput);
+            
             BBox srcBox = new BBox(configurator.getSrcBBox());
             BBox tgtBox = new BBox(configurator.getTgtBBox());
             Random r = new Random();
@@ -149,8 +145,8 @@ public class OTPMain {
             long min = Long.MAX_VALUE;
             int i=0;
             int skipped = 0;
+            
 //            for (;i<10;i++) {
-
                 RoutingRequest rq = configurator.getServer().routingRequest.clone();
                 rq.numItineraries = 1;
                 rq.arriveBy = true;
@@ -184,7 +180,6 @@ public class OTPMain {
                     LOG.error("Path not found");
                     skipped++;
                 }
-//                printPlan(plan);
 //             }
             LOG.info("Done routing, skipped "+skipped);
             avg = avg/(i-skipped);
@@ -194,33 +189,13 @@ public class OTPMain {
             LOG.info("Maximum routing time "+max+" ms = "+max/1000+" s");
             LOG.info("Average duration "+avgDuration+" ms = "+avgDuration/1000+" s");
         }
-    }
-    
-    private static void printPlan(TripPlan plan) {
-        if (plan == null)
-            return;
-        for (Itinerary itinerary : plan.itinerary) {
-            LOG.info("======");
-            LOG.info("Itinerary " + itinerary.duration + " " + itinerary.transfers);
-            LOG.info("======");
-            for (Leg leg : itinerary.legs) {
-                SimpleDateFormat formatter = new SimpleDateFormat("dd MM yyyy HH:mm:ss");
-                LOG.info("Leg From " + leg.from.lat + "," + leg.from.lon + " at "
-                        + formatter.format(leg.startTime.getTime()));
-                LOG.info("Leg To " + leg.to.lat + "," + leg.to.lon + " at "
-                        + formatter.format(leg.endTime.getTime()));
-                LOG.info("By " + leg.mode);
-                if (leg.routeType == null || leg.routeType < 0) {
-                    // non transit
-                    for (WalkStep step : leg.walkSteps) {
-                        LOG.info(leg.mode + " " + step.absoluteDirection.toString()
-                                + " on " + step.streetName);
-                    }
-                } else {
-                    // transit
-                }
-            }
+        
+        if (graphBuilder == null && graphVisualizer == null && grizzlyServer == null) {
+            LOG.info("Nothing to do. Use --help to see available tasks.");
         }
+
+        if (params.anStats)
+            configurator.showANStats();
     }
 
     private static GenericLocation generateLocation(Random r, BBox bbox) {

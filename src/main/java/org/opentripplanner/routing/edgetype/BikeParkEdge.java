@@ -61,7 +61,8 @@ public class BikeParkEdge extends Edge {
         /*
          * To unpark a bike, we need to be walking, and be allowed to bike.
          */
-        if (s0.getNonTransitMode() != TraverseMode.WALK || !options.modes.getBicycle())
+        if (!options.twoway
+                && (s0.getNonTransitMode() != TraverseMode.WALK || !options.modes.getBicycle()))
             return null;
 
         StateEditor s0e = s0.edit(this);
@@ -79,8 +80,9 @@ public class BikeParkEdge extends Edge {
          * To park a bike, we need to be riding one, (not rented) and be allowed to walk and to park
          * it.
          */
-        if (s0.getNonTransitMode() != TraverseMode.BICYCLE || !options.modes.getWalk()
-                || s0.isBikeRenting() || s0.isBikeParked())
+        if (!options.twoway
+                && (s0.getNonTransitMode() != TraverseMode.BICYCLE || !options.modes.getWalk()
+                        || s0.isBikeRenting() || s0.isBikeParked()))
             return null;
         BikeParkVertex bikeParkVertex = (BikeParkVertex) tov;
         if (bikeParkVertex.getSpacesAvailable() == 0) {
@@ -91,7 +93,7 @@ public class BikeParkEdge extends Edge {
         s0e.incrementWeight(options.bikeParkCost);
         s0e.incrementTimeInSeconds(options.bikeParkTime);
         s0e.setBackMode(TraverseMode.LEG_SWITCH);
-        s0e.setBikeParked(true);
+        s0e.setBikeParked(!options.twoway);
         State s1 = s0e.makeState();
         return s1;
     }

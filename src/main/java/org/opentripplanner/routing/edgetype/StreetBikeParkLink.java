@@ -71,6 +71,10 @@ public class StreetBikeParkLink extends Edge {
     }
 
     public State traverse(State s0) {
+        return traverse(s0, false);
+    }
+
+    public State traverse(State s0, boolean ignoreDirection) {
         // Do not even consider bike park vertices unless bike P+R is enabled.
         if (!s0.getOptions().bikeParkAndRide) {
             return null;
@@ -85,8 +89,6 @@ public class StreetBikeParkLink extends Edge {
         // Assume bike park are more-or-less on-street
         s1.incrementTimeInSeconds(1);
         s1.incrementWeight(1);
-        if (s0.getOptions().twoway)
-            s1.setBikeParkAndRide(false);
         // Do not force any mode, will use the latest one (walking bike or bike)
         return s1.makeState();
     }

@@ -48,11 +48,14 @@ public class IntersectionVertex extends StreetVertex {
      */
     public List<Vertex> backwardAccessNodes = Lists.newArrayList();
     
-//  /**
-//   * The set of access nodes for this street node, needed for 2-way PNR routing
-//   */
+    /**
+    * The set of PNR access nodes for this street node, needed for 2-way PNR routing
+    */
     public List<Vertex> pnrNodes = Lists.newArrayList();
-    
+
+    /**
+     * The set of bike PNR access nodes for this street node, needed for 2-way PNR routing
+     */
     public List<Vertex> bikePNRNodes = Lists.newArrayList();
 
     /** Returns true if this.freeFlowing or if it appears that this vertex is free-flowing */

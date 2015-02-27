@@ -168,6 +168,14 @@ public class State implements Cloneable {
             stateData.nonTransitMode = TraverseMode.CAR;
     }
     
+    public void setBikeParked(boolean parked) {
+        stateData.bikeParked = parked;
+        if (parked)
+            stateData.nonTransitMode = TraverseMode.WALK;
+        else
+            stateData.nonTransitMode = TraverseMode.BICYCLE;
+    }
+    
     public void setOptions(RoutingRequest options) {
         stateData.opt = options;
     }
@@ -895,7 +903,7 @@ public class State implements Cloneable {
         stateData.opt.parkAndRide = b;
     }
 
-    public void setBikeParked(boolean b) {
+    public void setBikeParkAndRide(boolean b) {
         stateData.opt.bikeParkAndRide = b;
     }
 }

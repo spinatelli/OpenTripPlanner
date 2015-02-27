@@ -22,9 +22,8 @@ import org.opentripplanner.routing.graph.Vertex;
 import com.beust.jcommander.internal.Lists;
 
 /**
- * A vertex for a park and ride area.
- * Connected to streets by ParkAndRideLinkEdge.
- * Transition for parking the car is handled by ParkAndRideEdge.
+ * A vertex for a park and ride area. Connected to streets by ParkAndRideLinkEdge. Transition for
+ * parking the car is handled by ParkAndRideEdge.
  * 
  * @author laurent
  * 
@@ -49,12 +48,12 @@ public class ParkAndRideVertex extends Vertex {
         super(g, label, x, y, name);
         setId(id);
     }
-    
-    public void setId(String id){
-    	this.id = id;
+
+    public void setId(String id) {
+        this.id = id;
     }
-    
-    public String getId(){
-    	return this.id;
+
+    public String getId() {
+        return this.id;
     }
 }

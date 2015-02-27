@@ -118,6 +118,18 @@ public class CommandLineParameters implements Cloneable {
             description = "Print computed access node stats")
     public boolean anStats = false;
     
+    @Parameter(names = {"--twoWayTest"},
+            description = "Perform 2-way PNR routing tests")
+    public boolean twoWayTest = false;
+    
+    @Parameter(names = {"--testInput"},
+            description = "Input CSV file for 2-way PNR routing tests")
+    public File testInput;
+    
+    @Parameter(names = {"--testOutput"}, validateWith = ReadableFile.class,
+            description = "Output CSV file of 2-way PNR routing tests")
+    public File testOutput;
+    
     @Parameter(names = {"--pnrRoute"},
             description = "Route with PNR nodes")
     public boolean pnrRoute = false;

@@ -15,10 +15,10 @@ package org.opentripplanner.graph_builder.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.opentripplanner.common.model.GenericLocation;
@@ -36,6 +36,7 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
 import org.opentripplanner.routing.spt.ShortestPathTree;
+import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -55,6 +56,8 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
 
     private static final int STEP = 1;
 
+    private GenericLocation location;
+
     public List<String> provides() {
         return Arrays.asList("access nodes");
     }
@@ -65,19 +68,28 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
 
     @Override
     public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
-        LOG.info("Computing access nodes for street nodes...");
+        LOG.info("Computing access nodes for street/PNR/bikePNR nodes...");
 
         // iterate over a copy of vertex list because it will be modified
-        ArrayList<Vertex> vertices = new ArrayList<Vertex>();
+        List<Vertex> vertices = new ArrayList<Vertex>();
         vertices.addAll(graph.getVertices());
-        Map<String, Integer> vmap = new HashMap<String, Integer>();
-        for (int i=0; i<vertices.size(); i++) {
-            vmap.put(vertices.get(i).getLabel(), i);
-        }
 
         graph.index(new DefaultStreetVertexIndexFactory());
-        int stopsize = Sets.newHashSet(Iterables.filter(vertices, TransitStop.class)).size();
+        Set<Vertex> stops = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
+                TransitStop.class)));
 
+        computeAccessNodes(graph, vertices, stops, false);
+        computeAccessNodes(graph, vertices, stops, true);
+        printIntersectionStats(vertices);
+        printPNRStats(vertices);
+        printBikePNRStats(vertices);
+
+        LOG.info("Done computing access nodes for street/PNR/bikePNR nodes...");
+    }
+
+    private void computeAccessNodes(Graph graph, List<Vertex> vertices, Set<Vertex> stops,
+            boolean bikeParkings) {
+        int stopsize = stops.size();
         long avgProfile = 0;
         long avgDijkstra = 0;
         // TransitStops are Access Node Candidates
@@ -96,6 +108,8 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
             if (!linkedToStreet)
                 continue;
 
+            location = new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts);
+
             /*
              * Full multi-modal backward profile search on the public transportation subnetwork of G
              * is performed, starting from a. This gives us travel time functions f(b) for each
@@ -105,27 +119,13 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
              * reached by entering the public transportation subnetwork in a at least once during
              * the day, which can be found in A^−1 (a).
              */
-            RoutingRequest options = new RoutingRequest(TraverseMode.TRANSIT);
-            options.to = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":"
-                    + ts));
-            options.batch = true;
-            options.parkAndRide = true;
-            options.arriveBy = true;
-            // options.setDummyRoutingContext(graph);
-            options.setRoutingContext(graph);
-            options.setNumItineraries(1);
-            options.setModes(new TraverseModeSet(TraverseMode.WALK, TraverseMode.TRANSIT));
-
-            Set<Vertex> stops = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
-                    TransitStop.class)));
-            // LOG.info("SIZE IS "+stops.size());
-            //
-            ProfileDijkstra profileDijkstra = new ProfileDijkstra(options);
-            profileDijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(stops));
+            // batch, PNR, bike PNR, arriveBy, traversemodes, graph, dummy routing context
+            RoutingRequest options = buildOptions(true, !bikeParkings, bikeParkings, true,
+                    new TraverseModeSet(TraverseMode.WALK, TraverseMode.TRANSIT), graph, false);
 
             State initial = new State(options);
             long time = System.currentTimeMillis();
-            ShortestPathTree spt = profileDijkstra.getShortestPathTree(initial);
+            List<State> states = doProfileSearch(initial, options, stops);
             long time2 = System.currentTimeMillis();
             avgProfile += (time2 - time);
 
@@ -137,99 +137,48 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
              * ts is inserted in the priority queue with key 0 and flag "covered"= true, the other
              * access nodes with their upper bound of the profile function above
              */
-            List<State> states = new ArrayList<State>();
-            for (State s : spt.getAllStates())
-                if (s.getVertex() instanceof TransitStop)
-                    states.add(s);
+            RoutingRequest opt = buildOptions(true, !bikeParkings, bikeParkings, true,
+                    new TraverseModeSet(TraverseMode.WALK), graph, true);
 
-            RoutingRequest opt = new RoutingRequest(TraverseMode.WALK);
-            opt.to = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts));
-            opt.batch = true;
-            opt.setDummyRoutingContext(graph);
-            opt.parkAndRide = true;
-            opt.arriveBy = true;
-            // opt.bikeParkAndRide = true;
-            opt.setNumItineraries(1);
-            opt.setModes(new TraverseModeSet(TraverseMode.WALK));
-            ANDijkstra mmdijkstra = new ANDijkstra(opt);
-            mmdijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(
-                    new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
-                            IntersectionVertex.class)))));
             time = System.currentTimeMillis();
-            initial.covered = true;
-            spt = mmdijkstra.getShortestPathTree(initial, states);
+            Collection<? extends State> anStates = forwardExploration(initial, opt, vertices,
+                    states, bikeParkings);
             time2 = System.currentTimeMillis();
             avgDijkstra += (time2 - time);
+            setAccessNodes(graph, anStates, ts, !bikeParkings);
 
-            for (State s : spt.getAllStates()) {
-                if (s.covered) {
-                    if (s.getVertex() instanceof IntersectionVertex)
-                        ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
-                                .add(ts);
-                    if (s.getVertex() instanceof ParkAndRideVertex)
-                        ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
-                                .add(ts);
-                }
-            }
+            states.clear();
 
-            // BACKWARD?
-            options = new RoutingRequest(TraverseMode.TRANSIT);
-            options.from = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":"
-                    + ts));
-            options.batch = true;
-//            options.arriveBy = true;
-//            options.parkAndRide = true;
-            // options.setDummyRoutingContext(graph);
-            options.setRoutingContext(graph);
-            options.setNumItineraries(1);
-            options.setModes(new TraverseModeSet(TraverseMode.WALK, TraverseMode.TRANSIT));
-
-            profileDijkstra = new ProfileDijkstra(options);
-            profileDijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(stops));
+            // BACKWARD
+            options = buildOptions(true, false, bikeParkings, false, new TraverseModeSet(
+                    TraverseMode.WALK, TraverseMode.TRANSIT), graph, false);
 
             initial = new State(options);
             time = System.currentTimeMillis();
-            ShortestPathTree bwdSPT = profileDijkstra.getShortestPathTree(initial);
+            states = doProfileSearch(initial, options, stops);
             time2 = System.currentTimeMillis();
             avgProfile += (time2 - time);
-            
-            //
-            states.clear();
-            for (State s : bwdSPT.getAllStates())
-                if (s.getVertex() instanceof TransitStop) {
+
+            for (State s : states) {
+                if (bikeParkings) {
+                    s.setBikeParkAndRide(true);
+                    s.setBikeParked(true);
+                } else
                     s.setParkAndRide(true);
-                    states.add(s);
-                }
-            opt = new RoutingRequest(TraverseMode.WALK);
-            opt.from = (new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts));
-            opt.batch = true;
-//            opt.arriveBy = true;
-            opt.setDummyRoutingContext(graph);
-            opt.parkAndRide = true;
-            // opt.bikeParkAndRide = true;
-            opt.setNumItineraries(1);
-            opt.setModes(new TraverseModeSet(TraverseMode.WALK));
-            mmdijkstra = new ANDijkstra(opt);
-            mmdijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(
-                    new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
-                            IntersectionVertex.class)))));
+            }
+
+            opt = buildOptions(true, !bikeParkings, bikeParkings, false, new TraverseModeSet(
+                    TraverseMode.WALK), graph, true);
             time = System.currentTimeMillis();
-            initial.covered = true;
-            initial.setParkAndRide(true);
-            spt = mmdijkstra.getShortestPathTree(initial, states);
+            if (bikeParkings) {
+                initial.setBikeParkAndRide(true);
+                initial.setBikeParked(true);
+            } else
+                initial.setParkAndRide(true);
+            anStates = forwardExploration(initial, opt, vertices, states, bikeParkings);
             time2 = System.currentTimeMillis();
             avgDijkstra += (time2 - time);
-
-            for (State s : spt.getAllStates()) {
-                if (s.covered) {
-                    if (s.getVertex() instanceof IntersectionVertex)
-                        ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
-                                .add(ts);
-                    if (s.getVertex() instanceof ParkAndRideVertex)
-                        ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
-                                .add(ts);
-                }
-            }
+            setBackwardAccessNodes(graph, anStates, ts, !bikeParkings);
 
             counter++;
             if (shouldLog(counter, stopsize)) {
@@ -237,48 +186,140 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
                         + "% of transit stops");
                 LOG.info("Average profiling time " + ((double) avgProfile / counter));
                 LOG.info("Average dijkstra time " + ((double) avgDijkstra / counter));
-//                break;
+                // break;
             }
         }
 
         LOG.info("Computed " + counter + " out of " + stopsize);
-        counter = 0;
+    }
+
+    private Collection<? extends State> forwardExploration(State initial, RoutingRequest opt,
+            List<Vertex> vertices, List<State> states, boolean bikeParkings) {
+        ANDijkstra mmdijkstra = new ANDijkstra(opt);
+        Set<Vertex> term = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
+                IntersectionVertex.class)));
+        // TODO: are these two needed?
+        term.addAll(Sets.newHashSet(Iterables.filter(vertices, ParkAndRideVertex.class)));
+        term.addAll(Sets.newHashSet(Iterables.filter(vertices, BikeParkVertex.class)));
+
+        mmdijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(term));
+        initial.covered = true;
+        ShortestPathTree spt = mmdijkstra.getShortestPathTree(initial, states, bikeParkings);
+        return spt.getAllStates();
+    }
+
+    private List<State> doProfileSearch(State initial, RoutingRequest options, Set<Vertex> stops) {
+
+        ProfileDijkstra profileDijkstra = new ProfileDijkstra(options);
+        profileDijkstra.setSearchTerminationStrategy(new MultiTargetTerminationStrategy(stops));
+
+        ShortestPathTree spt = profileDijkstra.getShortestPathTree(initial);
+        List<State> states = new ArrayList<State>();
+        for (State s : spt.getAllStates())
+            if (s.getVertex() instanceof TransitStop)
+                states.add(s);
+        return states;
+    }
+
+    private RoutingRequest buildOptions(boolean batch, boolean parkAndRide,
+            boolean bikeParkAndRide, boolean arriveBy, TraverseModeSet modes, Graph graph,
+            boolean dummy) {
+        RoutingRequest options = new RoutingRequest(modes.isTransit() ? TraverseMode.TRANSIT
+                : TraverseMode.WALK);
+        if (arriveBy)
+            options.to = location;
+        else
+            options.from = location;
+        options.batch = batch;
+        options.parkAndRide = parkAndRide;
+        options.bikeParkAndRide = bikeParkAndRide;
+        options.arriveBy = arriveBy;
+        if (dummy)
+            options.setDummyRoutingContext(graph);
+        else
+            options.setRoutingContext(graph);
+        options.setNumItineraries(1);
+        options.setModes(modes);
+        return options;
+    }
+
+    private void setAccessNodes(Graph graph, Collection<? extends State> anStates, Vertex ts,
+            boolean car) {
+        for (State s : anStates) {
+            if (s.covered) {
+                if (s.getVertex() instanceof IntersectionVertex && car)
+                    ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
+                            .add(ts);
+                else if (s.getVertex() instanceof ParkAndRideVertex && car)
+                    ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
+                            .add(ts);
+                else if (s.getVertex() instanceof BikeParkVertex && !car)
+                    ((BikeParkVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
+                            .add(ts);
+            }
+        }
+    }
+
+    private void setBackwardAccessNodes(Graph graph, Collection<? extends State> anStates,
+            Vertex ts, boolean car) {
+        for (State s : anStates) {
+            if (s.covered) {
+                if (s.getVertex() instanceof IntersectionVertex && car)
+                    ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
+                            .add(ts);
+                else if (s.getVertex() instanceof ParkAndRideVertex && car)
+                    ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
+                            .add(ts);
+                else if (s.getVertex() instanceof BikeParkVertex && !car)
+                    ((BikeParkVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
+                            .add(ts);
+            }
+        }
+    }
+
+    private void printIntersectionStats(List<Vertex> vertices) {
+        int counter = 0;
         int bwd = 0;
         int fwd = 0;
         for (IntersectionVertex iv : Iterables.filter(vertices, IntersectionVertex.class)) {
-            if (iv.accessNodes != null && iv.accessNodes.size() > 0) {
-                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+            if (iv.accessNodes != null && iv.accessNodes.size() > 0)
                 fwd++;
-            }
-            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() > 0) {
-                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() > 0)
                 bwd++;
-            }
             counter++;
         }
-
         LOG.info(fwd + " out of " + counter + " Intersection vertices have access nodes");
         LOG.info(bwd + " out of " + counter + " Intersection vertices have bwd access nodes");
-        
-        counter = 0;
-        bwd = 0;
-        fwd = 0;
-        for (ParkAndRideVertex iv : Iterables.filter(vertices, ParkAndRideVertex.class)) {
-            if (iv.accessNodes != null && iv.accessNodes.size() > 0) {
-                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+    }
+
+    private void printPNRStats(List<Vertex> vertices) {
+        int counter = 0;
+        int bwd = 0;
+        int fwd = 0;
+        for (ParkAndRideVertex pnr : Iterables.filter(vertices, ParkAndRideVertex.class)) {
+            if (pnr.accessNodes != null && pnr.accessNodes.size() > 0)
                 fwd++;
-            }
-            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() > 0) {
-                // LOG.info("Access Nodes = " + iv.accessNodes.size());
+            if (pnr.backwardAccessNodes != null && pnr.backwardAccessNodes.size() > 0)
                 bwd++;
-            }
             counter++;
         }
+        LOG.info(fwd + " out of " + counter + " PNR vertices have access nodes");
+        LOG.info(bwd + " out of " + counter + " PNR vertices have bwd access nodes");
+    }
 
-        LOG.info(fwd + " out of " + counter + " PNR nodes have access nodes");
-        LOG.info(bwd + " out of " + counter + " PNR nodes have bwd access nodes");
-        
-        LOG.info("Done computing access nodes for street nodes...");
+    private void printBikePNRStats(List<Vertex> vertices) {
+        int counter = 0;
+        int bwd = 0;
+        int fwd = 0;
+        for (BikeParkVertex bpnr : Iterables.filter(vertices, BikeParkVertex.class)) {
+            if (bpnr.accessNodes != null && bpnr.accessNodes.size() > 0)
+                fwd++;
+            if (bpnr.backwardAccessNodes != null && bpnr.backwardAccessNodes.size() > 0)
+                bwd++;
+            counter++;
+        }
+        LOG.info(fwd + " out of " + counter + " Bike PNR vertices have access nodes");
+        LOG.info(bwd + " out of " + counter + " Bike PNR vertices have bwd access nodes");
     }
 
     private boolean shouldLog(int counter, int stopsize) {

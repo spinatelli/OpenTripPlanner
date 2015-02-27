@@ -23,12 +23,13 @@ import org.opentripplanner.routing.algorithm.strategies.SkipTraverseResultStrate
 import org.opentripplanner.routing.algorithm.strategies.TrivialRemainingWeightHeuristic;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.edgetype.ParkAndRideEdge;
 import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
+import org.opentripplanner.routing.edgetype.StreetBikeParkLink;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.spt.BasicShortestPathTree;
 import org.opentripplanner.routing.spt.ShortestPathTree;
+import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 
 /**
@@ -67,10 +68,11 @@ public class ANDijkstra {
     }
 
     public ShortestPathTree getShortestPathTree(State initialState) {
-        return getShortestPathTree(initialState, null);
+        return getShortestPathTree(initialState, null, false);
     }
-    
-    public ShortestPathTree getShortestPathTree(State initialState, List<State> initialStates) {
+
+    public ShortestPathTree getShortestPathTree(State initialState, List<State> initialStates,
+            boolean bikeParkings) {
         Vertex target = null;
         if (options.rctx != null) {
             target = initialState.getOptions().rctx.target;
@@ -83,16 +85,13 @@ public class ANDijkstra {
                 spt.add(s);
                 queue.insert(s, s.getWeight());
             }
-
         spt.add(initialState);
         queue.insert(initialState, initialState.getWeight());
 
-//        System.out.println("=======\nSearch\n=======");
         while (!queue.empty()) { // Until the priority queue is empty:
             State u = queue.extract_min();
             Vertex u_vertex = u.getVertex();
-//            if(u.covered)
-//                System.out.println("COvered");
+
             if (traverseVisitor != null) {
                 traverseVisitor.visitVertex(u);
             }
@@ -106,51 +105,58 @@ public class ANDijkstra {
                 System.out.println(u_vertex);
             }
 
-            if (searchTerminationStrategy != null &&
-                searchTerminationStrategy.shouldSearchTerminate(initialState.getVertex(), null, u, spt, options)) {
+            if (searchTerminationStrategy != null
+                    && searchTerminationStrategy.shouldSearchTerminate(initialState.getVertex(),
+                            null, u, spt, options)) {
                 break;
             }
 
-            if (!(u.getVertex() instanceof ParkAndRideVertex)) {
+            if (!(u.getVertex() instanceof ParkAndRideVertex && !bikeParkings)
+                    || !(u.getVertex() instanceof BikeParkVertex && bikeParkings)) {
+
                 for (Edge edge : options.arriveBy ? u_vertex.getIncoming() : u_vertex.getOutgoing()) {
-                    if (skipEdgeStrategy != null &&
-                        skipEdgeStrategy.shouldSkipEdge(initialState.getVertex(), null, u, edge, spt, options)) {
+                    if (skipEdgeStrategy != null
+                            && skipEdgeStrategy.shouldSkipEdge(initialState.getVertex(), null, u,
+                                    edge, spt, options)) {
                         continue;
                     }
                     State v = null;
                     if (edge instanceof ParkAndRideLinkEdge)
                         v = ((ParkAndRideLinkEdge) edge).traverse(u, true);
-                    else 
+                    else if (edge instanceof StreetBikeParkLink)
+                        v = ((StreetBikeParkLink) edge).traverse(u, true);
+                    else
                         v = edge.traverse(u);
-                        
-    //                if (u.covered)
-    //                    System.out.println("EDGE "+edge.getClass().getName());
+
                     // Iterate over traversal results. When an edge leads nowhere (as indicated by
                     // returning NULL), the iteration is over.
                     for (; v != null; v = v.getNextResult()) {
-    //                    if (u.covered)
-    //                        System.out.println("STATE "+v);
-                        if (skipTraverseResultStrategy != null &&
-                            skipTraverseResultStrategy.shouldSkipTraversalResult(initialState.getVertex(), null, u, v, spt, options)) {
+                        if (skipTraverseResultStrategy != null
+                                && skipTraverseResultStrategy.shouldSkipTraversalResult(
+                                        initialState.getVertex(), null, u, v, spt, options)) {
                             continue;
                         }
                         if (traverseVisitor != null) {
                             traverseVisitor.visitEdge(edge, v);
                         }
                         if (verbose) {
-                            System.out.printf("  w = %f + %f = %f %s", u.getWeight(), v.getWeightDelta(), v.getWeight(), v.getVertex());
+                            System.out.printf("  w = %f + %f = %f %s", u.getWeight(),
+                                    v.getWeightDelta(), v.getWeight(), v.getVertex());
                         }
-                        if (v.exceedsWeightLimit(options.maxWeight)) continue;
+                        if (v.exceedsWeightLimit(options.maxWeight))
+                            continue;
                         if (spt.add(v)) {
                             double estimate = heuristic.computeForwardWeight(v, target);
                             queue.insert(v, v.getWeight() + estimate);
-                            if (traverseVisitor != null) traverseVisitor.visitEnqueue(v);
+                            if (traverseVisitor != null)
+                                traverseVisitor.visitEnqueue(v);
                         }
                     }
                 }
             }
             spt.postVisit(u);
         }
+
         return spt;
     }
 

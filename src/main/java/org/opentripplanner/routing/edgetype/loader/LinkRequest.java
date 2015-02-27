@@ -117,8 +117,7 @@ public class LinkRequest {
                 nearbyRouteEdges, possibleTransitLinksOnly);
         if (edges == null || edges.size() < 1) {
             // no edges were found nearby, or a bidirectional/loop bundle of edges was not identified
-            LOG.warn("found too few edges: {} {}", v.getName(), v.getCoordinate());
-//            System.out.println("\""+v.getName()+"\""+","+v.getLat()+","+v.getLon());
+            LOG.debug("found too few edges: {} {}", v.getName(), v.getCoordinate());
             return null;
         }
         // if the bundle was caught endwise (T intersections and dead ends), 

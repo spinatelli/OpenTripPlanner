@@ -58,12 +58,6 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
                 GraphPath gp = new GraphPath(s, optimize);
                 ret.add(gp);
                 map.put(s.pnrNode, gp);
-                State v = s;
-                while (v.getBackState() != null) {
-                    if (v.getBackMode() == TraverseMode.BUS || v.getBackMode() == TraverseMode.BUSISH)
-                        LOG.info("used BUS");
-                    v = v.getBackState();
-                }
             }
         }
         return ret;
