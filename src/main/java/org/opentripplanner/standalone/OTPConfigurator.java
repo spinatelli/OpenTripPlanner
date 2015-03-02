@@ -15,9 +15,7 @@ package org.opentripplanner.standalone;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.prefs.Preferences;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -28,6 +26,7 @@ import org.opentripplanner.analyst.request.SPTCache;
 import org.opentripplanner.analyst.request.SampleGridRenderer;
 import org.opentripplanner.analyst.request.TileCache;
 import org.opentripplanner.api.resource.PlanGenerator;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.graph_builder.impl.AccessNodeGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.BikePNRNodeGraphBuilderImpl;
@@ -36,6 +35,7 @@ import org.opentripplanner.graph_builder.impl.EmbeddedConfigGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.GtfsGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.PNRNodeGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.PruneFloatingIslands;
+import org.opentripplanner.graph_builder.impl.StreetDirectionGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.TransitToStreetNetworkGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.TransitToTaggedStopsGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.map.BusRouteStreetMatcher;
@@ -53,7 +53,6 @@ import org.opentripplanner.openstreetmap.impl.AnyFileBasedOpenStreetMapProviderI
 import org.opentripplanner.openstreetmap.services.OpenStreetMapProvider;
 import org.opentripplanner.routing.algorithm.PNRDijkstra;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.DefaultFareServiceFactory;
 import org.opentripplanner.routing.impl.GenericAStarFactory;
 import org.opentripplanner.routing.impl.GraphScanner;
@@ -64,7 +63,6 @@ import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
 import org.opentripplanner.routing.impl.SPTServiceFactory;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.SPTService;
-import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -77,7 +75,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 public class OTPConfigurator {
 
@@ -273,6 +270,15 @@ public class OTPConfigurator {
 
         // add a new graphbuilder that adds access nodes and PNR nodes for every street node
         if (params.computeAccessNodes && hasOSM && hasGTFS) {
+            if (params.cityCenter != null) {
+                String[] coords = params.cityCenter.split(",");
+                if (coords.length == 2) {
+                    double lat = Double.parseDouble(coords[0]), lon = Double.parseDouble(coords[1]);
+                    GenericLocation center = new GenericLocation(lat, lon);
+                    GraphBuilder streetDirectionBuilder = new StreetDirectionGraphBuilderImpl(center);
+                    graphBuilder.addGraphBuilder(streetDirectionBuilder);
+                }
+            }
             GraphBuilder accessNodeBuilder = new AccessNodeGraphBuilderImpl();
             graphBuilder.addGraphBuilder(accessNodeBuilder);
             GraphBuilder pnrNodeBuilder = new PNRNodeGraphBuilderImpl();

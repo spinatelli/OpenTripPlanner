@@ -22,6 +22,8 @@ import org.opentripplanner.common.TurnRestrictionType;
 import org.opentripplanner.common.geometry.CompactLineString;
 import org.opentripplanner.common.geometry.DirectionUtils;
 import org.opentripplanner.common.geometry.PackedCoordinateSequence;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
@@ -46,6 +48,10 @@ import com.vividsolutions.jts.geom.LineString;
  * 
  */
 public class StreetEdge extends Edge implements Cloneable {
+
+    private enum DirectionType {
+        ENTERING, EXITING, CIRCULAR
+    }
 
     private static Logger LOG = LoggerFactory.getLogger(StreetEdge.class);
 
@@ -130,6 +136,8 @@ public class StreetEdge extends Edge implements Cloneable {
     /** The angle at the start of the edge geometry. Internal representation like that of inAngle. */
     private byte outAngle;
 
+    private DirectionType type = DirectionType.CIRCULAR;
+
     public StreetEdge(StreetVertex v1, StreetVertex v2, LineString geometry, String name,
             double length, StreetTraversalPermission permission, boolean back) {
         super(v1, v2);
@@ -141,6 +149,7 @@ public class StreetEdge extends Edge implements Cloneable {
         this.setPermission(permission);
         this.setCarSpeed(DEFAULT_CAR_SPEED);
         this.setWheelchairAccessible(true); // accessible by default
+
         if (geometry != null) {
             try {
                 for (Coordinate c : geometry.getCoordinates()) {
@@ -167,6 +176,17 @@ public class StreetEdge extends Edge implements Cloneable {
                 outAngle = 0;
             }
         }
+    }
+    
+    public void computeStreetType(GenericLocation reference, double epsilon) {
+        double distance = SphericalDistanceLibrary.getInstance().distance(fromv.getCoordinate(),
+                reference.getCoordinate());
+        double distance2 = SphericalDistanceLibrary.getInstance().distance(tov.getCoordinate(),
+                reference.getCoordinate());
+        if (distance2 < distance - epsilon * ((double)length_mm)/1000)
+            type = DirectionType.ENTERING;
+        else if (distance2 > distance + epsilon * ((double)length_mm)/1000)
+            type = DirectionType.EXITING;
     }
 
     public boolean canTraverse(RoutingRequest options) {
@@ -477,13 +497,37 @@ public class StreetEdge extends Edge implements Cloneable {
                 return null;
             }
         }
-
-        s1.incrementTimeInSeconds(roundedTime);
-        if (traverseMode == TraverseMode.CAR)
+        if (traverseMode == TraverseMode.CAR && isRushHour(s0.getTimeInMillis())) {
             weight *= CAR_RELUCTANCE;
+            roundedTime *= CAR_RELUCTANCE;
+        }
+        s1.incrementTimeInSeconds(roundedTime);
         s1.incrementWeight(weight);
 
         return s1;
+    }
+
+    private boolean isRushHour(long timeInMillis) {
+        long secondsFromMidnight = getSecondsFromMidnight(timeInMillis);
+        long f1,t1,f2,t2;
+        f1=7*60*60+30*60;
+        t1=9*60*60+30*60;
+        f2=16*60*60+30*60;
+        t2=19*60*60+30*60;
+        boolean isRushHourMorning = secondsFromMidnight > f1 && secondsFromMidnight < t1;
+        boolean isRushHourEvening = secondsFromMidnight > f2 && secondsFromMidnight < t2;
+        return ((type == DirectionType.ENTERING || type == DirectionType.CIRCULAR) && isRushHourMorning)
+                || ((type == DirectionType.EXITING || type == DirectionType.CIRCULAR) && isRushHourEvening);
+    }
+    
+    private long getSecondsFromMidnight(long timeInMillis) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(timeInMillis);
+        c.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        c.set(java.util.Calendar.MINUTE, 0);
+        c.set(java.util.Calendar.SECOND, 0);
+        c.set(java.util.Calendar.MILLISECOND, 0);
+        return (timeInMillis - c.getTimeInMillis())/1000;
     }
 
     private double calculateOverageWeight(double firstValue, double secondValue, double maxValue,

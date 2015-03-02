@@ -118,6 +118,10 @@ public class CommandLineParameters implements Cloneable {
             description = "Print computed access node stats")
     public boolean anStats = false;
     
+    @Parameter(names = {"--cityCenter"},
+            description = "Coordinates representing the city center. Street directions are computed wrt this location.")
+    public String cityCenter = null;
+    
     @Parameter(names = {"--twoWayTest"},
             description = "Perform 2-way PNR routing tests")
     public boolean twoWayTest = false;
