@@ -145,7 +145,9 @@ public class PNRDijkstra implements SPTService { // maybe this should be wrapped
         RoutingRequest options = opt.clone();
         options.numItineraries = 1;
         options.arriveBy = true;
-        options.returnDateTime = options.dateTime;
+        //TODO: remove, it will be useless once the client supports 2way routing
+        if (options.returnDateTime == options.dateTime)
+            options.returnDateTime = options.dateTime+6*60*60;
         options.parkAndRide = !options.modes.getBicycle();
         options.bikeParkAndRide = options.modes.getBicycle();
         options.twoway = true;
