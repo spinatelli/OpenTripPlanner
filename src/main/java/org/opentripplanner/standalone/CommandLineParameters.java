@@ -126,11 +126,19 @@ public class CommandLineParameters implements Cloneable {
             description = "Perform 2-way PNR routing tests")
     public boolean twoWayTest = false;
     
+    @Parameter(names = {"--generateTestData"},
+            description = "Generate test data for 2-way PNR routing tests")
+    public boolean generateTestData = false;
+    
+    @Parameter(names = {"--testData"},
+            description = "Output CSV file for generated 2-way PNR routing test data")
+    public File testData;
+    
     @Parameter(names = {"--testInput"},
             description = "Input CSV file for 2-way PNR routing tests")
     public File testInput;
     
-    @Parameter(names = {"--testOutput"}, validateWith = ReadableFile.class,
+    @Parameter(names = {"--testOutput"},
             description = "Output CSV file of 2-way PNR routing tests")
     public File testOutput;
     
