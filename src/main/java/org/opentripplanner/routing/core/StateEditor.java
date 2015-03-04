@@ -562,4 +562,8 @@ public class StateEditor {
         cloneStateDataAsNeeded();
         child.stateData.bikeRentalNetworks = networks;
     }
+
+    public void setPNRNode(Vertex vertex) {
+        child.pnrNode = vertex;
+    }
 }

@@ -566,8 +566,10 @@ public class PNRDijkstra implements SPTService { // maybe this should be wrapped
         long abortTime = DateUtils.absoluteTimeout(relTimeoutSeconds);
 
         startSearch(options, terminationStrategy, abortTime);
-
-        if (runState != null) {
+        if(!options.twoway) {
+            GenericAStar astar = new GenericAStar();
+            return astar.getShortestPathTree(options, relTimeoutSeconds, terminationStrategy);
+        } else if(runState != null) {
             runSearch(abortTime);
 
             // if (runState.foundPathWeightIn == Double.MAX_VALUE || runState.foundPathWeightOut ==

@@ -1,14 +1,19 @@
-package org.opentripplanner.standalone;
+package org.opentripplanner.standalone.twowayutil;
 
 import org.onebusaway.csv_entities.schema.annotations.CsvField;
 import org.onebusaway.gtfs.serialization.mappings.LatLonFieldMappingFactory;
 import org.onebusaway.gtfs.serialization.mappings.StopTimeFieldMappingFactory;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
 
-public class TestInfo {
+public class TestInput {
+
+    @CsvField()
+    private int id;
+    
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double fromLat;
 
@@ -27,7 +32,7 @@ public class TestInfo {
     @CsvField(mapping = StopTimeFieldMappingFactory.class)
     private int departureTime;
 
-    public TestInfo() {
+    public TestInput() {
     }
 
     public String toString() {
@@ -82,15 +87,34 @@ public class TestInfo {
         this.toLon = toLon;
     }
 
-    public RoutingRequest generateRequest(RoutingRequest rq, Graph graph) {
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void generateRequest(RoutingRequest rq, Graph graph) {
         rq.numItineraries = 1;
         rq.arriveBy = true;
-        rq.dateTime = System.currentTimeMillis() / 1000;
-        rq.returnDateTime = System.currentTimeMillis() / 1000;
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(System.currentTimeMillis());
+        c.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        c.set(java.util.Calendar.MINUTE, 0);
+        c.set(java.util.Calendar.SECOND, 0);
+        c.set(java.util.Calendar.MILLISECOND, 0);
+        java.util.Calendar c2 = java.util.Calendar.getInstance();
+        
+        c2.setTimeInMillis(c.getTimeInMillis()+arrivalTime*1000);
+        rq.dateTime = c2.getTimeInMillis()/1000;
+        c2.setTimeInMillis(c.getTimeInMillis()+departureTime*1000);
+        rq.returnDateTime = c2.getTimeInMillis()/1000;
         rq.modes = new TraverseModeSet(TraverseMode.WALK);
         rq.parkAndRide = true;
         rq.twoway = true;
+        rq.from = new GenericLocation(getFromLat(), getFromLon());
+        rq.to = new GenericLocation(getToLat(), getToLon());
         rq.setRoutingContext(graph);
-        return rq;
     }
 }

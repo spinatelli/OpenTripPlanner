@@ -23,6 +23,7 @@ import javax.xml.bind.annotation.XmlElementWrapper;
 
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.opentripplanner.routing.core.Fare;
+import org.opentripplanner.routing.graph.Vertex;
 
 /**
  * An Itinerary is one complete way of getting from the start location to the end location.
@@ -102,6 +103,8 @@ public class Itinerary {
      * itineraries with a good slope). 
      */
     public boolean tooSloped = false;
+
+    public Vertex pnrNode;
 
     /** 
      * adds leg to array list

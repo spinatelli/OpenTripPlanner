@@ -43,6 +43,8 @@ public class GraphPath {
     // don't really need to save this (available through State) but why not
     private RoutingContext rctx;
 
+    public Vertex pnrNode;
+
     /**
      * Construct a GraphPath based on the given state by following back-edge fields all the way back
      * to the origin of the search. This constructs a proper Java list of states (allowing random
@@ -69,6 +71,7 @@ public class GraphPath {
             LOG.debug("Disable reverse-optimize for on-board depart");
             optimize = false;
         }
+        pnrNode = s.pnrNode;
 
 //        LOG.info("NORMAL");
 //        s.dumpPath();
@@ -95,7 +98,6 @@ public class GraphPath {
         this.edges = new LinkedList<Edge>();
         for (State cur = lastState; cur != null; cur = cur.getBackState()) {
             states.addFirst(cur);
-            
             // Record the edge if it exists and this is not the first state in the path.
             if (cur.getBackEdge() != null && cur.getBackState() != null) {
                 edges.addFirst(cur.getBackEdge());

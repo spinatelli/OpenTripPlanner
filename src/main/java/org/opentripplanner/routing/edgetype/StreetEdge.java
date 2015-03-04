@@ -95,6 +95,8 @@ public class StreetEdge extends Edge implements Cloneable {
     private static final int SLOPEOVERRIDE_FLAG_INDEX = 5;
 
     private static final int WHEELCHAIR_ACCESSIBLE_FLAG_INDEX = 6;
+    
+    private static final int HALF_HOUR = 1800;
 
     /** back, roundabout, stairs, ... */
     private byte flags;
@@ -177,15 +179,15 @@ public class StreetEdge extends Edge implements Cloneable {
             }
         }
     }
-    
+
     public void computeStreetType(GenericLocation reference, double epsilon) {
         double distance = SphericalDistanceLibrary.getInstance().distance(fromv.getCoordinate(),
                 reference.getCoordinate());
         double distance2 = SphericalDistanceLibrary.getInstance().distance(tov.getCoordinate(),
                 reference.getCoordinate());
-        if (distance2 < distance - epsilon * ((double)length_mm)/1000)
+        if (distance2 < distance - epsilon * ((double) length_mm) / 1000)
             type = DirectionType.ENTERING;
-        else if (distance2 > distance + epsilon * ((double)length_mm)/1000)
+        else if (distance2 > distance + epsilon * ((double) length_mm) / 1000)
             type = DirectionType.EXITING;
     }
 
@@ -497,9 +499,12 @@ public class StreetEdge extends Edge implements Cloneable {
                 return null;
             }
         }
-        if (traverseMode == TraverseMode.CAR && isRushHour(s0.getTimeInMillis())) {
-            weight *= CAR_RELUCTANCE;
-            roundedTime *= CAR_RELUCTANCE;
+        double rushHourFactor = rushHourFactor(s0.getTimeInMillis());
+        if (traverseMode == TraverseMode.CAR && rushHourFactor > 0) {
+            weight *= CAR_RELUCTANCE * rushHourFactor;
+            roundedTime *= CAR_RELUCTANCE * rushHourFactor;
+            if (rushHourFactor > 1 || rushHourFactor < 0)
+                LOG.info("WTF "+rushHourFactor);
         }
         s1.incrementTimeInSeconds(roundedTime);
         s1.incrementWeight(weight);
@@ -507,19 +512,37 @@ public class StreetEdge extends Edge implements Cloneable {
         return s1;
     }
 
-    private boolean isRushHour(long timeInMillis) {
+    private double rushHourFactor(long timeInMillis) {
         long secondsFromMidnight = getSecondsFromMidnight(timeInMillis);
-        long f1,t1,f2,t2;
-        f1=7*60*60+30*60;
-        t1=9*60*60+30*60;
-        f2=16*60*60+30*60;
-        t2=19*60*60+30*60;
-        boolean isRushHourMorning = secondsFromMidnight > f1 && secondsFromMidnight < t1;
-        boolean isRushHourEvening = secondsFromMidnight > f2 && secondsFromMidnight < t2;
-        return ((type == DirectionType.ENTERING || type == DirectionType.CIRCULAR) && isRushHourMorning)
-                || ((type == DirectionType.EXITING || type == DirectionType.CIRCULAR) && isRushHourEvening);
+        long f1, t1, f2, t2;
+        f1 = 7 * 60 * 60 + 30 * 60;
+        t1 = 9 * 60 * 60 + 30 * 60;
+        f2 = 16 * 60 * 60 + 30 * 60;
+        t2 = 19 * 60 * 60 + 30 * 60;
+        boolean isRushHourMorning = secondsFromMidnight > f1
+                && secondsFromMidnight < t1;
+        boolean isRushHourEvening = secondsFromMidnight > f2
+                && secondsFromMidnight < t2;
+        if (type != DirectionType.EXITING && isRushHourMorning) {
+            if (secondsFromMidnight < f1 + HALF_HOUR)
+                return interpolate(f1, f1+HALF_HOUR, secondsFromMidnight);
+            else if(secondsFromMidnight > t1 - HALF_HOUR)
+                return interpolate(t1 - HALF_HOUR, t1, secondsFromMidnight);
+        }
+        if (type != DirectionType.ENTERING && isRushHourEvening) {
+            if (secondsFromMidnight < f2 + HALF_HOUR)
+                return interpolate(f2, f2+HALF_HOUR, secondsFromMidnight);
+            else if(secondsFromMidnight > t2 - HALF_HOUR)
+                return interpolate(t2 - HALF_HOUR, t2, secondsFromMidnight);
+            return 1;
+        }
+        return 0;
     }
     
+    private double interpolate(long from, long to, long point) {
+        return (point-from)/(to-from);
+    }
+
     private long getSecondsFromMidnight(long timeInMillis) {
         java.util.Calendar c = java.util.Calendar.getInstance();
         c.setTimeInMillis(timeInMillis);
@@ -527,7 +550,7 @@ public class StreetEdge extends Edge implements Cloneable {
         c.set(java.util.Calendar.MINUTE, 0);
         c.set(java.util.Calendar.SECOND, 0);
         c.set(java.util.Calendar.MILLISECOND, 0);
-        return (timeInMillis - c.getTimeInMillis())/1000;
+        return (timeInMillis - c.getTimeInMillis()) / 1000;
     }
 
     private double calculateOverageWeight(double firstValue, double secondValue, double maxValue,

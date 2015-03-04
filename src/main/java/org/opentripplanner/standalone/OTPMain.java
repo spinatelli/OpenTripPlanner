@@ -25,9 +25,15 @@ import org.opentripplanner.graph_builder.AnnotationsToHTML;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.error.PathNotFoundException;
-import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
 import org.opentripplanner.routing.services.GraphService;
+import org.opentripplanner.standalone.twowayutil.BBox;
+import org.opentripplanner.standalone.twowayutil.OneWayOutput;
+import org.opentripplanner.standalone.twowayutil.TestEntityHandler;
+import org.opentripplanner.standalone.twowayutil.TestInput;
+import org.opentripplanner.standalone.twowayutil.TwoWayCsvTester;
+import org.opentripplanner.standalone.twowayutil.TwoWayOutput;
+import org.opentripplanner.standalone.twowayutil.TwoWayTestEntityHandler;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,27 +54,8 @@ import com.beust.jcommander.ParameterException;
  * Graphs are sought by default in /var/otp/graphs.
  */
 public class OTPMain {
-
+    
     private static final Logger LOG = LoggerFactory.getLogger(OTPMain.class);
-
-    public static class BBox {
-        public double minLat = -90;
-        public double minLon = -180;
-        public double maxLat = 90;
-        public double maxLon = 180;
-        
-        public BBox(String s) {
-            String[] parts = s.split(",");
-            minLon = Double.parseDouble(parts[0]);
-            minLat = Double.parseDouble(parts[1]);
-            maxLon = Double.parseDouble(parts[2]);
-            maxLat = Double.parseDouble(parts[3]);
-        }
-        
-        public String toString() {
-            return minLat+","+minLon+","+maxLat+","+maxLon;
-        }
-    }
     
     public static void main(String[] args) {
         /* Parse and validate command line parameters */
@@ -126,58 +113,147 @@ public class OTPMain {
             }
         }
 
+        if (params.oneWayTest) {
+            LOG.info("Reading test input file");
+            TwoWayCsvTester csv = new TwoWayCsvTester();
+            TwoWayTestEntityHandler handler = new TwoWayTestEntityHandler();
+            csv.fromFile(params.testInput, TwoWayOutput.class, handler);
+            List<TwoWayOutput> infos = handler.getList();
+            LOG.info("Done reading");
+            long avg = 0;
+            long avgDuration = 0;
+            long max = 0;
+            long min = Long.MAX_VALUE;
+            int i=0;
+            int skipped = 0;
+
+            GraphService gs = configurator.getGraphService();
+            LOG.info("Starting tests");
+            OTPServer server = configurator.getServer();
+            List<OneWayOutput> outputs = new ArrayList<OneWayOutput>();
+//            for(TwoWayOutput info: infos) {
+            TwoWayOutput info = infos.get(0);
+                LOG.info("Routing "+info);
+                RoutingRequest rq = server.routingRequest.clone();
+                info.generateRequest(rq, gs.getRouter().graph);
+                Router router = gs.getRouter(rq.routerId);
+                try {
+                    LOG.info("Planning "+i);
+                    long time = System.currentTimeMillis();
+                    TripPlan plan = router.planGenerator.generate(rq);
+                    long time2 = System.currentTimeMillis();
+                    long t = time2-time;
+                    LOG.info("Took " + t + " millis");
+                    avg += t;
+                    max = t > max ? t : max;
+                    min = t < min? t : min;
+                    OneWayOutput out = new OneWayOutput(info, (int) t);
+                    t = -1;
+                    if (plan != null) {
+                        t = plan.itinerary.get(0).duration;
+                        avgDuration += t;
+                        if (plan.itinerary.get(0).pnrNode != null) {
+                            LOG.info(plan.itinerary.get(0).pnrNode.toString());
+//                            out.setParkingLat(plan.itinerary.get(0).pnrNode.getLat());
+//                            out.setParkingLon(plan.itinerary.get(0).pnrNode.getLon());
+                        }
+                    }
+//                    out.setDuration((int)t);
+                    LOG.info("Iteration "+i+" time "+t);
+                    outputs.add(out);
+                    i++;
+                } catch (PathNotFoundException e) {
+                    LOG.error("Path not found");
+                    skipped++;
+                }
+//            }
+
+            try {
+                csv.toFile(params.testOutput, outputs);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            LOG.info("Done routing, skipped "+skipped);
+            if(i != skipped) {
+                avg = avg/(i-skipped);
+                avgDuration = avgDuration/(i-skipped);
+            }
+            LOG.info("Average routing time "+avg+" ms = "+avg/1000+" s");
+            LOG.info("Minimum routing time "+min+" ms = "+min/1000+" s");
+            LOG.info("Maximum routing time "+max+" ms = "+max/1000+" s");
+            LOG.info("Average duration "+avgDuration+" ms = "+avgDuration/1000+" s");
+        }
+
         if (params.twoWayTest) {
             LOG.info("Reading test input file");
             TwoWayCsvTester csv = new TwoWayCsvTester();
-            try {
-                List<TestInfo> infos = csv.fromFile(params.testInput);
-                LOG.info("Done reading");
-                long avg = 0;
-                long avgDuration = 0;
-                long max = 0;
-                long min = Long.MAX_VALUE;
-                int i=0;
-                int skipped = 0;
-                GraphService gs = configurator.getGraphService();
-                OTPServer server = configurator.getServer();
-                RoutingRequest opt = server.routingRequest;
-                Graph graph = gs.getRouter().graph;
-    
-                LOG.info("Starting tests");
-                for(TestInfo info: infos) {
-                    LOG.info(info.toString());
-                    RoutingRequest rq = info.generateRequest(opt.clone(), graph);
-                    Router router = server.getRouter(rq.routerId);
-                    try {
-                        long time = System.currentTimeMillis();
-                        TripPlan plan = router.planGenerator.generate(rq);
-                        long time2 = System.currentTimeMillis();
-                        long t = time2-time;
-                        LOG.info("Testinfo "+i+" took " + t + " millis");
-                        avg += t;
-                        max = t > max ? t : max;
-                        min = t < min? t : min;
-                        t = -1;
-                        if (plan != null) {
-                            t = plan.itinerary.get(0).duration + plan.itinerary.get(1).duration;
-                            avgDuration += t;
+            TestEntityHandler handler = new TestEntityHandler();
+            csv.fromFile(params.testInput, TestInput.class, handler);
+            List<TestInput> infos = handler.getList();
+            LOG.info("Done reading");
+            long avg = 0;
+            long avgDuration = 0;
+            long max = 0;
+            long min = Long.MAX_VALUE;
+            int i=0;
+            int skipped = 0;
+
+            GraphService gs = configurator.getGraphService();
+            LOG.info("Starting tests");
+            OTPServer server = configurator.getServer();
+            List<TwoWayOutput> outputs = new ArrayList<TwoWayOutput>();
+            for(TestInput info: infos) {
+                LOG.info("Routing "+info);
+                RoutingRequest rq = server.routingRequest.clone();
+                info.generateRequest(rq, gs.getRouter().graph);
+                Router router = gs.getRouter(rq.routerId);
+                try {
+                    LOG.info("Planning "+i);
+                    long time = System.currentTimeMillis();
+                    TripPlan plan = router.planGenerator.generate(rq);
+                    long time2 = System.currentTimeMillis();
+                    long t = time2-time;
+                    LOG.info("Took " + t + " millis");
+                    avg += t;
+                    max = t > max ? t : max;
+                    min = t < min? t : min;
+                    TwoWayOutput out = new TwoWayOutput(info, (int) t);
+                    t = -1;
+                    if (plan != null) {
+                        t = plan.itinerary.get(0).duration + plan.itinerary.get(1).duration;
+                        avgDuration += t;
+                        if (plan.itinerary.get(0).pnrNode != null) {
+                            LOG.info(plan.itinerary.get(0).pnrNode.toString());
+                            out.setParkingLat(plan.itinerary.get(0).pnrNode.getLat());
+                            out.setParkingLon(plan.itinerary.get(0).pnrNode.getLon());
                         }
-                        i++;
-                    } catch (PathNotFoundException e) {
-                        LOG.error("Path not found");
-                        skipped++;
                     }
+                    out.setDuration((int)t);
+                    LOG.info("Iteration "+i+" time "+t);
+                    outputs.add(out);
+                    i++;
+                } catch (PathNotFoundException e) {
+                    LOG.error("Path not found");
+                    skipped++;
                 }
-                LOG.info("Done tests, skipped "+skipped);
-                avg = avg/(i-skipped);
-                avgDuration = avgDuration/(i-skipped);
-                LOG.info("Average routing time "+avg+" ms = "+avg/1000+" s");
-                LOG.info("Minimum routing time "+min+" ms = "+min/1000+" s");
-                LOG.info("Maximum routing time "+max+" ms = "+max/1000+" s");
-                LOG.info("Average duration "+avgDuration+" ms = "+avgDuration/1000+" s");
-            } catch (Exception e) {
+            }
+
+            try {
+                csv.toFile(params.testOutput, outputs);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
+            LOG.info("Done routing, skipped "+skipped);
+            if(i != skipped) {
+                avg = avg/(i-skipped);
+                avgDuration = avgDuration/(i-skipped);
+            }
+            LOG.info("Average routing time "+avg+" ms = "+avg/1000+" s");
+            LOG.info("Minimum routing time "+min+" ms = "+min/1000+" s");
+            LOG.info("Maximum routing time "+max+" ms = "+max/1000+" s");
+            LOG.info("Average duration "+avgDuration+" ms = "+avgDuration/1000+" s");
         }
         
         if (params.generateTestData) {
@@ -185,10 +261,10 @@ public class OTPMain {
             BBox srcBox = new BBox(configurator.getSrcBBox());
             BBox tgtBox = new BBox(configurator.getTgtBBox());
             Random r = new Random();
-            List<TestInfo> list = new ArrayList<TestInfo>();
+            List<TestInput> list = new ArrayList<TestInput>();
 //            double minLat = 45.46, minLon = 9.18, maxLat = 45.56, maxLon = 9.29;
             for(int i=0;i<3;i++) {
-                TestInfo t = new TestInfo();
+                TestInput t = new TestInput();
                 GenericLocation f = generateLocation(r, srcBox);
                 t.setFromLat(f.lat);
                 t.setFromLon(f.lng);

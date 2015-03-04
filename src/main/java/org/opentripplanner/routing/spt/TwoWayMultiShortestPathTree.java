@@ -54,7 +54,7 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
             return Collections.emptyList();
         List<GraphPath> ret = new LinkedList<GraphPath>();
         for (State s : stateList) {
-            if (s.isFinal(true) && s.allPathParsersAccept()) {
+            if (s.isFinal(true) && s.allPathParsersAccept() && s.pnrNode != null) {
                 GraphPath gp = new GraphPath(s, optimize);
                 ret.add(gp);
                 map.put(s.pnrNode, gp);

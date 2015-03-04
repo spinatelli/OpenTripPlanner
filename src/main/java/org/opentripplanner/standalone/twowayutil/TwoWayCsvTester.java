@@ -1,10 +1,9 @@
-package org.opentripplanner.standalone;
+package org.opentripplanner.standalone.twowayutil;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.onebusaway.csv_entities.CsvEntityReader;
@@ -33,47 +32,31 @@ public class TwoWayCsvTester {
         public void close() throws IOException {
         }
     }
-    
-    private class TestEntityHandler implements EntityHandler {
-        List<TestInfo> list = new ArrayList<TestInfo>();
-        
-        public List<TestInfo> getList() {
-            return list;
-        }
-        
-        @Override
-        public void handleEntity(Object bean) {
-            list.add((TestInfo)bean);
-        }
-    }
 
     public TwoWayCsvTester() {
     }
 
-    public List<TestInfo> fromFile(File path) {
+    public void fromFile(File path, Class<?> type, EntityHandler handler) {
         CsvEntityReader reader = new CsvEntityReader();
         reader.setInputSource(new CsvFileInputSource(path));
         reader.setInternStrings(true);
-        TestEntityHandler handler = new TestEntityHandler() {
-        };
         reader.addEntityHandler(handler);
         try {
-            reader.readEntities(TestInfo.class);
+            reader.readEntities(type);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        return handler.getList();
     }
 
     public void performTests() {
 
     }
 
-    public void toFile(File path, List<TestInfo> infos) throws IOException {
+    public void toFile(File path, List<? extends Object> infos) throws IOException {
         CsvEntityWriter writer = new CsvEntityWriter();
         writer.setOutputLocation(path);
-        for(TestInfo info:infos)
+        for(Object info:infos)
             writer.handleEntity(info);
         writer.flush();
         writer.close();

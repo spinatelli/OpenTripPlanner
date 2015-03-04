@@ -126,6 +126,10 @@ public class CommandLineParameters implements Cloneable {
             description = "Perform 2-way PNR routing tests")
     public boolean twoWayTest = false;
     
+    @Parameter(names = {"--oneWayTest"},
+            description = "Perform one-way routing tests starting from 2-way test data")
+    public boolean oneWayTest = false;
+    
     @Parameter(names = {"--generateTestData"},
             description = "Generate test data for 2-way PNR routing tests")
     public boolean generateTestData = false;
@@ -142,9 +146,9 @@ public class CommandLineParameters implements Cloneable {
             description = "Output CSV file of 2-way PNR routing tests")
     public File testOutput;
     
-    @Parameter(names = {"--pnrRoute"},
-            description = "Route with PNR nodes")
-    public boolean pnrRoute = false;
+    @Parameter(names = {"--twoWayRouting"},
+            description = "Two way routing with PNR nodes")
+    public boolean twoWayRouting = false;
     
     @Parameter(names = {"--bboxSrc"},
             description = "Source location bounding box")

@@ -75,6 +75,7 @@ public class ParkAndRideEdge extends Edge {
             s1.incrementWeight(time);
             s1.incrementTimeInSeconds(time);
             s1.setCarParked(!s0.isCarParked());
+            s1.setPNRNode(s0.getVertex());
             s1.setBackMode(TraverseMode.LEG_SWITCH);
             return s1.makeState();
         } else {

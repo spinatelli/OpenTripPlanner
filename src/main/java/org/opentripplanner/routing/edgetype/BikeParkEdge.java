@@ -70,6 +70,8 @@ public class BikeParkEdge extends Edge {
         s0e.incrementTimeInSeconds(options.bikeParkTime);
         s0e.setBackMode(TraverseMode.LEG_SWITCH);
         s0e.setBikeParked(false);
+        if (!options.twoway)
+            s0e.setPNRNode(s0.getVertex());
         State s1 = s0e.makeState();
         return s1;
     }
@@ -94,6 +96,8 @@ public class BikeParkEdge extends Edge {
         s0e.incrementTimeInSeconds(options.bikeParkTime);
         s0e.setBackMode(TraverseMode.LEG_SWITCH);
         s0e.setBikeParked(!options.twoway);
+        if (!options.twoway)
+            s0e.setPNRNode(s0.getVertex());
         State s1 = s0e.makeState();
         return s1;
     }
