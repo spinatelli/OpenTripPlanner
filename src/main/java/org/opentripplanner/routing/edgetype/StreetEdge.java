@@ -500,10 +500,10 @@ public class StreetEdge extends Edge implements Cloneable {
             }
         }
         double rushHourFactor = rushHourFactor(s0.getTimeInMillis());
-        if (traverseMode == TraverseMode.CAR && rushHourFactor > 0) {
-            weight *= CAR_RELUCTANCE * rushHourFactor;
-            roundedTime *= CAR_RELUCTANCE * rushHourFactor;
-        }
+//        if (traverseMode == TraverseMode.CAR && rushHourFactor > 0) {
+//            weight *= CAR_RELUCTANCE * rushHourFactor;
+//            roundedTime *= CAR_RELUCTANCE * rushHourFactor;
+//        }
         s1.incrementTimeInSeconds(roundedTime);
         s1.incrementWeight(weight);
 

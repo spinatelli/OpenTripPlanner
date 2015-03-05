@@ -109,9 +109,9 @@ public class OTPConfigurator {
         InputStreamGraphSource.FileFactory graphSourceFactory = new InputStreamGraphSource.FileFactory(
                 params.graphDirectory);
         graphService.graphSourceFactory = graphSourceFactory;
-        if (!params.twoWayRouting)
-            graphService.routerLifecycleManager = routerLifecycleManager;
-        else
+//        if (!params.twoWayRouting)
+//            graphService.routerLifecycleManager = routerLifecycleManager;
+//        else
             graphService.routerLifecycleManager = pnrRouterLifecycleManager;
         if (params.graphDirectory != null) {
             graphSourceFactory.basePath = params.graphDirectory;

@@ -69,10 +69,6 @@ public class PNRDijkstra implements SPTService { // maybe this should be wrapped
         RUNNING, STOPPED
     }
 
-    /*
-     * TODO instead of having a separate class for search state, we should just make one
-     * GenericAStar per request.
-     */
     class RunState {
         public Map<Vertex, State> pnrOut = new HashMap<Vertex, State>();
 
