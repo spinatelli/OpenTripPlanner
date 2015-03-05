@@ -171,7 +171,7 @@ public class TwoWayOutput {
 
     public void generateRequest(RoutingRequest rq, Graph graph) {
         rq.numItineraries = 1;
-        rq.arriveBy = true;
+        rq.setArriveBy(true);
         java.util.Calendar c = java.util.Calendar.getInstance();
         c.setTimeInMillis(System.currentTimeMillis());
         c.set(java.util.Calendar.HOUR_OF_DAY, 0);

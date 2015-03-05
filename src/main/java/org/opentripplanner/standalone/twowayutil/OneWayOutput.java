@@ -69,6 +69,8 @@ public class OneWayOutput {
     
     public OneWayOutput(TwoWayOutput info, int t) {
         setId(info.getId());
+        setArrivalTime(info.getArrivalTime());
+        setDepartureTime(info.getDepartureTime());
         setFromLat(info.getFromLat());
         setFromLon(info.getFromLon());
         setToLat(info.getToLat());

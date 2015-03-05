@@ -131,8 +131,7 @@ public class OTPMain {
             LOG.info("Starting tests");
             OTPServer server = configurator.getServer();
             List<OneWayOutput> outputs = new ArrayList<OneWayOutput>();
-//            for(TwoWayOutput info: infos) {
-            TwoWayOutput info = infos.get(0);
+            for(TwoWayOutput info: infos) {
                 LOG.info("Routing "+info);
                 RoutingRequest rq = server.routingRequest.clone();
                 info.generateRequest(rq, gs.getRouter().graph);
@@ -141,32 +140,57 @@ public class OTPMain {
                     LOG.info("Planning "+i);
                     long time = System.currentTimeMillis();
                     TripPlan plan = router.planGenerator.generate(rq);
-                    long time2 = System.currentTimeMillis();
-                    long t = time2-time;
-                    LOG.info("Took " + t + " millis");
+                    long dur = 0,rtime,t = System.currentTimeMillis()-time;
+                    rtime = t;
                     avg += t;
                     max = t > max ? t : max;
                     min = t < min? t : min;
+                    
                     OneWayOutput out = new OneWayOutput(info, (int) t);
                     t = -1;
+                    
+                    if (plan != null) {
+                        dur = t = plan.itinerary.get(0).duration;
+                        avgDuration += t;
+                        if (plan.itinerary.get(0).pnrNode != null) {
+                            out.setOwFirstParkingLat(plan.itinerary.get(0).pnrNode.getLat());
+                            out.setOwFirstParkingLon(plan.itinerary.get(0).pnrNode.getLon());
+                        }
+                    }
+                    
+                    GenericLocation l = rq.from;
+                    rq.from = rq.to;
+                    rq.to = l;
+                    rq.dateTime = rq.returnDateTime;
+                    rq.setArriveBy(false);
+                    
+                    time = System.currentTimeMillis();
+                    plan = router.planGenerator.generate(rq);
+                    t = System.currentTimeMillis()-time;
+                    rtime += t;
+                    avg += t;
+                    max = t > max ? t : max;
+                    min = t < min? t : min;
+                    t = -1;
+                    
                     if (plan != null) {
                         t = plan.itinerary.get(0).duration;
+                        dur += t;
                         avgDuration += t;
                         if (plan.itinerary.get(0).pnrNode != null) {
                             LOG.info(plan.itinerary.get(0).pnrNode.toString());
-//                            out.setParkingLat(plan.itinerary.get(0).pnrNode.getLat());
-//                            out.setParkingLon(plan.itinerary.get(0).pnrNode.getLon());
+                            out.setOwSecondParkingLat(plan.itinerary.get(0).pnrNode.getLat());
+                            out.setOwSecondParkingLon(plan.itinerary.get(0).pnrNode.getLon());
                         }
                     }
-//                    out.setDuration((int)t);
-                    LOG.info("Iteration "+i+" time "+t);
+                    out.setOwDuration((int)dur);
+                    out.setOwTime((int)rtime);
                     outputs.add(out);
-                    i++;
                 } catch (PathNotFoundException e) {
                     LOG.error("Path not found");
                     skipped++;
                 }
-//            }
+            }
 
             try {
                 csv.toFile(params.testOutput, outputs);
@@ -182,7 +206,7 @@ public class OTPMain {
             LOG.info("Average routing time "+avg+" ms = "+avg/1000+" s");
             LOG.info("Minimum routing time "+min+" ms = "+min/1000+" s");
             LOG.info("Maximum routing time "+max+" ms = "+max/1000+" s");
-            LOG.info("Average duration "+avgDuration+" ms = "+avgDuration/1000+" s");
+            LOG.info("Average duration "+avgDuration+" s = "+avgDuration/60+" mins");
         }
 
         if (params.twoWayTest) {
