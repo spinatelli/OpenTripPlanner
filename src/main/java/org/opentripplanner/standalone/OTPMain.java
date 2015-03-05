@@ -153,8 +153,8 @@ public class OTPMain {
                         dur = t = plan.itinerary.get(0).duration;
                         avgDuration += t;
                         if (plan.itinerary.get(0).pnrNode != null) {
-                            out.setOwFirstParkingLat(plan.itinerary.get(0).pnrNode.getLat());
-                            out.setOwFirstParkingLon(plan.itinerary.get(0).pnrNode.getLon());
+                            out.setOwFirstParkingLat(plan.itinerary.get(0).pnrNode.y);
+                            out.setOwFirstParkingLon(plan.itinerary.get(0).pnrNode.x);
                         }
                     }
                     
@@ -179,8 +179,8 @@ public class OTPMain {
                         avgDuration += t;
                         if (plan.itinerary.get(0).pnrNode != null) {
                             LOG.info(plan.itinerary.get(0).pnrNode.toString());
-                            out.setOwSecondParkingLat(plan.itinerary.get(0).pnrNode.getLat());
-                            out.setOwSecondParkingLon(plan.itinerary.get(0).pnrNode.getLon());
+                            out.setOwSecondParkingLat(plan.itinerary.get(0).pnrNode.y);
+                            out.setOwSecondParkingLon(plan.itinerary.get(0).pnrNode.x);
                         }
                     }
                     out.setOwDuration((int)dur);
@@ -249,8 +249,8 @@ public class OTPMain {
                         avgDuration += t;
                         if (plan.itinerary.get(0).pnrNode != null) {
                             LOG.info(plan.itinerary.get(0).pnrNode.toString());
-                            out.setParkingLat(plan.itinerary.get(0).pnrNode.getLat());
-                            out.setParkingLon(plan.itinerary.get(0).pnrNode.getLon());
+                            out.setParkingLat(plan.itinerary.get(0).pnrNode.y);
+                            out.setParkingLon(plan.itinerary.get(0).pnrNode.x);
                         }
                     }
                     out.setDuration((int)t);

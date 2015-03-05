@@ -246,7 +246,7 @@ public class PlanGenerator {
         if (itinerary.transfers > 0 && !(states[0].getVertex() instanceof OnboardDepartVertex)) {
             itinerary.transfers--;
         }
-        itinerary.pnrNode = path.pnrNode;
+        itinerary.pnrNode = path.pnrNode.getCoordinate();
 
         return itinerary;
     }

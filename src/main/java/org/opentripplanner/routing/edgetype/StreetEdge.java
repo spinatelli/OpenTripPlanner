@@ -74,7 +74,7 @@ public class StreetEdge extends Edge implements Cloneable {
 
     public static final int CLASS_LINK = 32; // on/offramps; OSM calls them "links"
 
-    public static final double CAR_RELUCTANCE = 3;
+    public static final double CAR_RELUCTANCE = 1.5;
 
     private static final double GREENWAY_SAFETY_FACTOR = 0.1;
 
@@ -501,8 +501,8 @@ public class StreetEdge extends Edge implements Cloneable {
         }
         double rushHourFactor = rushHourFactor(s0.getTimeInMillis());
         if (traverseMode == TraverseMode.CAR && rushHourFactor > 0) {
-            weight *= CAR_RELUCTANCE * rushHourFactor;
-            roundedTime *= CAR_RELUCTANCE * rushHourFactor;
+            weight *= (1+CAR_RELUCTANCE * rushHourFactor);
+            roundedTime *= (1+CAR_RELUCTANCE * rushHourFactor);
         }
         s1.incrementTimeInSeconds(roundedTime);
         s1.incrementWeight(weight);
