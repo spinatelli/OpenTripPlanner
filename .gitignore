@@ -26,3 +26,5 @@ gen-py/
 .idea/
 .sonar
 _site/
+lucene/
+*.log
