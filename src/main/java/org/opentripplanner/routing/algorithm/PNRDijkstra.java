@@ -265,11 +265,6 @@ public class PNRDijkstra implements SPTService { // maybe this should be wrapped
 
         runState.nVisited += 1;
 
-        if (runState.u_vertex instanceof BikeParkVertex) {
-            if (((BikeParkVertex) runState.u_vertex).getId().equals("320623009"))
-                System.out.print("");
-        }
-
         if (checkMilestone(runState.u)) {
             addAllFromMilestoneSet(queue, milestoneSet);
             return true;

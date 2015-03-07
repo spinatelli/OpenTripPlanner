@@ -19,8 +19,11 @@ public class OneWayOutput {
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double fromLon;
 
-    @CsvField(mapping = StopTimeFieldMappingFactory.class)
-    private int arrivalTime;
+    @CsvField()
+    private String arrivalDate;
+
+    @CsvField()
+    private String arrivalTime;
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double toLat;
@@ -28,8 +31,11 @@ public class OneWayOutput {
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double toLon;
 
-    @CsvField(mapping = StopTimeFieldMappingFactory.class)
-    private int departureTime;
+    @CsvField()
+    private String departureDate;
+
+    @CsvField()
+    private String departureTime;
 
     //routing time
     @CsvField()
@@ -67,7 +73,7 @@ public class OneWayOutput {
     public OneWayOutput() {
     }
     
-    public OneWayOutput(TwoWayOutput info, int t) {
+    public OneWayOutput(TwoWayOutput info) {
         setId(info.getId());
         setArrivalTime(info.getArrivalTime());
         setDepartureTime(info.getDepartureTime());
@@ -79,26 +85,43 @@ public class OneWayOutput {
         setTwParkingLat(info.getParkingLat());
         setTwTime(info.getTime());
         setTwDuration(info.getDuration());
-        setOwTime(t);
+        setDepartureDate(info.getDepartureDate());
+        setArrivalDate(info.getArrivalDate());
+    }
+
+    public String getArrivalDate() {
+        return arrivalDate;
+    }
+
+    public void setArrivalDate(String arrivalDate) {
+        this.arrivalDate = arrivalDate;
+    }
+
+    public String getDepartureDate() {
+        return departureDate;
+    }
+
+    public void setDepartureDate(String departureDate) {
+        this.departureDate = departureDate;
     }
 
     public String toString() {
-        return "Experiment " + id + " took ";
+        return "Experiment " + id + " took "+owTime;
     }
 
-    public int getArrivalTime() {
+    public String getArrivalTime() {
         return arrivalTime;
     }
 
-    public void setArrivalTime(int arrivalTime) {
+    public void setArrivalTime(String arrivalTime) {
         this.arrivalTime = arrivalTime;
     }
 
-    public int getDepartureTime() {
+    public String getDepartureTime() {
         return departureTime;
     }
 
-    public void setDepartureTime(int departureTime) {
+    public void setDepartureTime(String departureTime) {
         this.departureTime = departureTime;
     }
 

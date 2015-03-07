@@ -11,7 +11,7 @@ import org.onebusaway.csv_entities.CsvEntityWriter;
 import org.onebusaway.csv_entities.CsvInputSource;
 import org.onebusaway.csv_entities.EntityHandler;
 
-public class TwoWayCsvTester {
+public class TwoWayCsvTestReader {
 
     private class CsvFileInputSource implements CsvInputSource {
 
@@ -33,7 +33,7 @@ public class TwoWayCsvTester {
         }
     }
 
-    public TwoWayCsvTester() {
+    public TwoWayCsvTestReader() {
     }
 
     public void fromFile(File path, Class<?> type, EntityHandler handler) {

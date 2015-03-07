@@ -88,7 +88,6 @@ public class PlanGenerator {
 
     /** Generates a TripPlan from a Request */
     public TripPlan generate(RoutingRequest options) {
-
         // TODO: this seems to only check the endpoints, which are usually auto-generated
         // if ( ! options.isAccessible())
         // throw new LocationNotAccessible();
@@ -246,7 +245,8 @@ public class PlanGenerator {
         if (itinerary.transfers > 0 && !(states[0].getVertex() instanceof OnboardDepartVertex)) {
             itinerary.transfers--;
         }
-        itinerary.pnrNode = path.pnrNode.getCoordinate();
+        if (path.pnrNode != null)
+            itinerary.pnrNode = path.pnrNode.getCoordinate();
 
         return itinerary;
     }

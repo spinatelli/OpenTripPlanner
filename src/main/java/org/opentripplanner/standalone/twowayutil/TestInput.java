@@ -1,13 +1,22 @@
 package org.opentripplanner.standalone.twowayutil;
 
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.Locale;
+import java.util.TimeZone;
+
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeConstants;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
+
 import org.onebusaway.csv_entities.schema.annotations.CsvField;
 import org.onebusaway.gtfs.serialization.mappings.LatLonFieldMappingFactory;
-import org.onebusaway.gtfs.serialization.mappings.StopTimeFieldMappingFactory;
 import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.util.DateUtils;
 
 public class TestInput {
 
@@ -25,12 +34,18 @@ public class TestInput {
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double toLon;
+    
+    @CsvField()
+    private String arrivalDate;
+    
+    @CsvField()
+    private String arrivalTime;
 
-    @CsvField(mapping = StopTimeFieldMappingFactory.class)
-    private int arrivalTime;
+    @CsvField()
+    private String departureDate;
 
-    @CsvField(mapping = StopTimeFieldMappingFactory.class)
-    private int departureTime;
+    @CsvField()
+    private String departureTime;
 
     public TestInput() {
     }
@@ -39,19 +54,19 @@ public class TestInput {
         return "From " + fromLat + "," + fromLon + " to " + toLat + "," + toLon+" arrive by "+arrivalTime+" depart from "+departureTime;
     }
 
-    public int getArrivalTime() {
+    public String getArrivalTime() {
         return arrivalTime;
     }
 
-    public void setArrivalTime(int arrivalTime) {
+    public void setArrivalTime(String arrivalTime) {
         this.arrivalTime = arrivalTime;
     }
 
-    public int getDepartureTime() {
+    public String getDepartureTime() {
         return departureTime;
     }
 
-    public void setDepartureTime(int departureTime) {
+    public void setDepartureTime(String departureTime) {
         this.departureTime = departureTime;
     }
 
@@ -75,6 +90,22 @@ public class TestInput {
         return fromLon;
     }
 
+    public String getArrivalDate() {
+        return arrivalDate;
+    }
+
+    public void setArrivalDate(String arrivalDate) {
+        this.arrivalDate = arrivalDate;
+    }
+
+    public String getDepartureDate() {
+        return departureDate;
+    }
+
+    public void setDepartureDate(String departureDate) {
+        this.departureDate = departureDate;
+    }
+
     public void setFromLon(double fromLon) {
         this.fromLon = fromLon;
     }
@@ -95,24 +126,42 @@ public class TestInput {
         this.id = id;
     }
 
+    public static int fieldsToDateTime(String date, String time, TimeZone tz) {
+        if (date == null && time != null) {
+            try {
+                // If the time query param doesn't specify a timezone, use the graph's default. See issue #1373.
+                DatatypeFactory df = javax.xml.datatype.DatatypeFactory.newInstance();
+                XMLGregorianCalendar xmlGregCal = df.newXMLGregorianCalendar(time);
+                GregorianCalendar gregCal = xmlGregCal.toGregorianCalendar();
+                if (xmlGregCal.getTimezone() == DatatypeConstants.FIELD_UNDEFINED) {
+                    gregCal.setTimeZone(tz);
+                }
+                Date dateObject = gregCal.getTime();
+                return (int) (dateObject.getTime()/1000);
+            } catch (DatatypeConfigurationException e) {
+                Date dateObject = DateUtils.toDate(date, time, tz);
+                return (int) (dateObject.getTime()/1000);
+            }
+        } else {
+            Date dateObject = DateUtils.toDate(date, time, tz);
+            return (int) (dateObject.getTime()/1000);
+        }
+    }
+    
     public void generateRequest(RoutingRequest rq, Graph graph) {
-        rq.numItineraries = 1;
+        rq.numItineraries = 2;
+        rq.maxWalkDistance = 1207.008;
+        rq.wheelchairAccessible = false;
+        rq.showIntermediateStops = false;
+        rq.clampInitialWait = -1;
         rq.arriveBy = true;
-        java.util.Calendar c = java.util.Calendar.getInstance();
-        c.setTimeInMillis(System.currentTimeMillis());
-        c.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        c.set(java.util.Calendar.MINUTE, 0);
-        c.set(java.util.Calendar.SECOND, 0);
-        c.set(java.util.Calendar.MILLISECOND, 0);
-        java.util.Calendar c2 = java.util.Calendar.getInstance();
-        
-        c2.setTimeInMillis(c.getTimeInMillis()+arrivalTime*1000);
-        rq.dateTime = c2.getTimeInMillis()/1000;
-        c2.setTimeInMillis(c.getTimeInMillis()+departureTime*1000);
-        rq.returnDateTime = c2.getTimeInMillis()/1000;
-        rq.modes = new TraverseModeSet(TraverseMode.WALK);
+        rq.routerId = "default";
+        rq.locale = Locale.ENGLISH;
+        rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
         rq.parkAndRide = true;
         rq.twoway = true;
+        rq.dateTime = fieldsToDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
+        rq.returnDateTime = fieldsToDateTime(departureDate, departureTime, graph.getTimeZone());
         rq.from = new GenericLocation(getFromLat(), getFromLon());
         rq.to = new GenericLocation(getToLat(), getToLon());
         rq.setRoutingContext(graph);
