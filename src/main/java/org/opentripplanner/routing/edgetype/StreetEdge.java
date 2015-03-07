@@ -181,9 +181,9 @@ public class StreetEdge extends Edge implements Cloneable {
     }
 
     public void computeStreetType(GenericLocation reference, double epsilon) {
-        double distance = SphericalDistanceLibrary.getInstance().distance(fromv.getCoordinate(),
+        double distance = SphericalDistanceLibrary.distance(fromv.getCoordinate(),
                 reference.getCoordinate());
-        double distance2 = SphericalDistanceLibrary.getInstance().distance(tov.getCoordinate(),
+        double distance2 = SphericalDistanceLibrary.distance(tov.getCoordinate(),
                 reference.getCoordinate());
         if (distance2 < distance - epsilon * ((double) length_mm) / 1000)
             type = DirectionType.ENTERING;
@@ -620,7 +620,7 @@ public class StreetEdge extends Edge implements Cloneable {
     }
 
     public String toString() {
-        return "PlainStreetEdge(" + getId() + ", " + name + ", " + fromv + " -> " + tov
+        return "StreetEdge(" + getId() + ", " + name + ", " + fromv + " -> " + tov
                 + " length=" + this.getDistance() + " carSpeed=" + this.getCarSpeed()
                 + " permission=" + this.getPermission() + ")";
     }
@@ -636,41 +636,26 @@ public class StreetEdge extends Edge implements Cloneable {
 
     public boolean canTurnOnto(Edge e, State state, TraverseMode mode) {
         Graph graph = state.getOptions().rctx.graph;
-        for (TurnRestriction restriction : graph.getTurnRestrictions(this)) {
+        for (TurnRestriction turnRestriction : graph.getTurnRestrictions(this)) {
             /*
              * FIXME: This is wrong for trips that end in the middle of restriction.to
              */
 
             // NOTE(flamholz): edge to be traversed decides equivalence. This is important since
             // it might be a temporary edge that is equivalent to some graph edge.
-            if (restriction.type == TurnRestrictionType.ONLY_TURN) {
-                if (!e.isEquivalentTo(restriction.to) && restriction.modes.contains(mode)
-                        && restriction.active(state.getTimeSeconds())) {
+            if (turnRestriction.type == TurnRestrictionType.ONLY_TURN) {
+                if (!e.isEquivalentTo(turnRestriction.to) && turnRestriction.modes.contains(mode) &&
+                        turnRestriction.active(state.getTimeSeconds())) {
                     return false;
                 }
             } else {
-                if (e.isEquivalentTo(restriction.to) && restriction.modes.contains(mode)
-                        && restriction.active(state.getTimeSeconds())) {
+                if (e.isEquivalentTo(turnRestriction.to) && turnRestriction.modes.contains(mode) &&
+                        turnRestriction.active(state.getTimeSeconds())) {
                     return false;
                 }
             }
         }
         return true;
-    }
-
-    protected boolean detachFrom(Graph graph) {
-        if (fromv != null) {
-            for (Edge e : fromv.getIncoming()) {
-                if (e instanceof StreetEdge) {
-                    for (TurnRestriction restriction : graph.getTurnRestrictions(e)) {
-                        if (restriction.to == this) {
-                            graph.removeTurnRestriction(e, restriction);
-                        }
-                    }
-                }
-            }
-        }
-        return super.detachFrom(graph);
     }
 
     @Override
@@ -801,4 +786,7 @@ public class StreetEdge extends Edge implements Cloneable {
         return this.outAngle * 180 / 128;
     }
 
+    protected List<TurnRestriction> getTurnRestrictions(Graph graph) {
+        return graph.getTurnRestrictions(this);
+    }
 }

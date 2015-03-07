@@ -13,6 +13,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 package org.opentripplanner.index;
 
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -28,12 +30,14 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 
+import com.google.common.collect.Collections2;
+
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
-import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.index.model.PatternDetail;
@@ -41,11 +45,15 @@ import org.opentripplanner.index.model.PatternShort;
 import org.opentripplanner.index.model.RouteShort;
 import org.opentripplanner.index.model.StopClusterDetail;
 import org.opentripplanner.index.model.StopShort;
+import org.opentripplanner.index.model.StopTimesInPattern;
 import org.opentripplanner.index.model.TripShort;
 import org.opentripplanner.index.model.TripTimeShort;
 import org.opentripplanner.profile.StopCluster;
+import org.opentripplanner.routing.edgetype.SimpleTransfer;
+import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.edgetype.Timetable;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.GraphIndex;
 import org.opentripplanner.routing.services.StreetVertexIndexService;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -58,6 +66,8 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.internal.Lists;
 import com.beust.jcommander.internal.Sets;
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
@@ -68,7 +78,6 @@ public class IndexAPI {
     @SuppressWarnings("unused")
     private static final Logger LOG = LoggerFactory.getLogger(IndexAPI.class);
     private static final double MAX_STOP_SEARCH_RADIUS = 5000;
-    private static final DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
     private static final String MSG_404 = "FOUR ZERO FOUR";
     private static final String MSG_400 = "FOUR HUNDRED";
 
@@ -108,6 +117,28 @@ public class IndexAPI {
        }
        return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
    }
+
+    /** Return all routes for the specific agency. */
+    @GET
+    @Path("/agencies/{agencyId}/routes")
+    public Response getAgencyRoutes (@PathParam("agencyId") String agencyId) {
+        Collection<Route> routes = index.routeForId.values();
+        Agency agency = index.agencyForId.get(agencyId);
+        if (agency == null) return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
+        Collection<Route> agencyRoutes = new ArrayList<>();
+        for (Route route: routes) {
+            if (route.getAgency() == agency) {
+                agencyRoutes.add(route);
+            }
+        }
+        routes = agencyRoutes;
+        if (detail){
+            return Response.status(Status.OK).entity(routes).build();
+        }
+        else {
+            return Response.status(Status.OK).entity(RouteShort.list(routes)).build();
+        }
+    }
    
    /** Return specific transit stop in the graph, by ID. */
    @GET
@@ -121,7 +152,7 @@ public class IndexAPI {
            return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
        }
    }
-
+   
    /** Return a list of all stops within a circle around the given coordinate. */
    @GET
    @Path("/stops")
@@ -152,7 +183,7 @@ public class IndexAPI {
            Coordinate coord = new Coordinate(lon, lat);
            for (TransitStop stopVertex : streetIndex.getNearbyTransitStops(
                     new Coordinate(lon, lat), radius)) {
-               double distance = distanceLibrary.fastDistance(stopVertex.getCoordinate(), coord);
+               double distance = SphericalDistanceLibrary.fastDistance(stopVertex.getCoordinate(), coord);
                if (distance < radius) {
                    stops.add(new StopShort(stopVertex.getStop(), (int) distance));
                }
@@ -206,6 +237,57 @@ public class IndexAPI {
         return Response.status(Status.OK).entity(index.stopTimesForStop(stop)).build();
     }
 
+    /** Return upcoming vehicle arrival/departure times at the given stop. */
+    @GET
+    @Path("/stops/{stopId}/stoptimes/{date}")
+    public Response getStoptimesForStopAndDate (@PathParam("stopId") String stopIdString,
+                                                @PathParam("date") String date) {
+        Stop stop = index.stopForId.get(GtfsLibrary.convertIdFromString(stopIdString));
+        if (stop == null) return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
+        ServiceDate sd;
+        try {
+            sd = ServiceDate.parseString(date);
+        }
+        catch (ParseException e){
+            return Response.status(Status.BAD_REQUEST).entity(MSG_400).build();
+        }
+
+        List<StopTimesInPattern> ret = index.getStopTimesForStop(stop, sd);
+        return Response.status(Status.OK).entity(ret).build();
+    }
+    
+    /**
+     * Return the generated transfers a stop in the graph, by stop ID
+     */
+    @GET
+    @Path("/stops/{stopId}/transfers")
+    public Response getTransfers(@PathParam("stopId") String stopIdString) {
+        Stop stop = index.stopForId.get(GtfsLibrary.convertIdFromString(stopIdString));
+        
+        if (stop != null) {
+            // get the transfers for the stop
+            TransitStop v = index.stopVertexForStop.get(stop);
+            Collection<Edge> transfers = Collections2.filter(v.getOutgoing(), new Predicate<Edge>() {
+                @Override
+                public boolean apply(Edge edge) {
+                    return edge instanceof SimpleTransfer;
+                }
+            });
+            
+            Collection<Transfer> out = Collections2.transform(transfers, new Function<Edge, Transfer> () {
+                @Override
+                public Transfer apply(Edge edge) {
+                    // TODO Auto-generated method stub
+                    return new Transfer((SimpleTransfer) edge);
+                }
+            });
+            
+            return Response.status(Status.OK).entity(out).build();
+        } else {
+            return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
+        }
+    }
+    
    /** Return a list of all routes in the graph. */
    // with repeated hasStop parameters, replaces old routesBetweenStops
    @GET
@@ -431,7 +513,7 @@ public class IndexAPI {
         } else {
             return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
         }
-    }
+    }    
 
     // TODO include pattern ID for each trip in responses
 
@@ -472,4 +554,18 @@ public class IndexAPI {
         }
     }
 
+    /** Represents a transfer from a stop */
+    private static class Transfer {
+        /** The stop we are connecting to */
+        public String toStopId;
+        
+        /** the on-street distance of the transfer (meters) */
+        public double distance;
+        
+        /** Make a transfer from a simpletransfer edge from the graph. */
+        public Transfer(SimpleTransfer e) {
+            toStopId = GtfsLibrary.convertIdToString(((TransitStop) e.getToVertex()).getStopId());
+            distance = e.getDistance();
+        }
+    }
 }

@@ -104,7 +104,7 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 
     private Queue<Edge> newHighlightedEdges = new LinkedBlockingQueue<Edge>();
 
-    private Vertex highlightedVertex;
+    private Coordinate highlightedCoordinate;
 
     private Edge highlightedEdge;
 
@@ -610,9 +610,13 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
         lastLabelY = y;
     }
 
-    private void drawVertex(Vertex v, double r) {
+    private void drawCoordinate(Coordinate c, double r) {
         noStroke();
-        ellipse(toScreenX(v.getX()), toScreenY(v.getY()), r, r);
+        ellipse(toScreenX(c.x), toScreenY(c.y), r, r);
+    }
+
+    private void drawVertex(Vertex v, double r) {
+        drawCoordinate(v.getCoordinate(), r);
     }
 
     public synchronized void draw() {
@@ -738,22 +742,24 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 	private void drawVertices() {
 		/* turn off vertex display when zoomed out */
 		final double METERS_PER_DEGREE_LAT = 111111.111111;
-		boolean closeEnough = (modelBounds.getHeight() * METERS_PER_DEGREE_LAT / this.width < 4);
+		boolean closeEnough = (modelBounds.getHeight() * METERS_PER_DEGREE_LAT / this.width < 5);
 		/* Draw selected visible vertices */
-		fill(60, 60, 200);
 		for (Vertex v : visibleVertices) {
-			if (drawTransitStopVertices && closeEnough && v instanceof TransitStationStop) {
-		        drawVertex(v, 5);
+            if (drawTransitStopVertices && closeEnough && v instanceof TransitStationStop) {
+                fill(60, 60, 200); // Make transit stops blue dots
+		        drawVertex(v, 7);
 			}
 			if (drawStreetVertices && v instanceof IntersectionVertex) {
 		        IntersectionVertex iv = (IntersectionVertex) v;
 		        if (iv.trafficLight) {
-		            drawVertex(v, 7);
-		        }
+                    fill(120, 60, 60); // Make traffic lights red dots
+                    drawVertex(v, 5);
+                }
 		    }
 			if (drawMultistateVertices && spt!=null){
 				List<? extends State> states = spt.getStates(v);
 				if(states != null){
+                    fill(100, 60, 100);
 					drawVertex( v, states.size()*2 );
 				}
 			}
@@ -792,10 +798,10 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 		        drawVertex(v, 8);
 		    }
 		}
-		/* Draw (single) highlighed vertex in a different color */
-		if (highlightedVertex != null) {
+		/* Draw (single) highlighed coordinate in a different color */
+		if (highlightedCoordinate != null) {
 		    fill(255, 255, 30);
-		    drawVertex(highlightedVertex, 7);
+		    drawCoordinate(highlightedCoordinate, 7);
 		}
 		noFill();
 	}
@@ -1026,8 +1032,7 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
         selectors.remove(selectors.size() - 1);
     }
 
-    public void highlightVertex(Vertex v) {
-        Coordinate c = v.getCoordinate();
+    public void highlightCoordinate(Coordinate c) {
         double xd = 0, yd = 0;
         while (!modelBounds.contains(c)) {
             xd = modelBounds.getWidth() / 100;
@@ -1035,8 +1040,12 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
             modelBounds.expandBy(xd, yd);
         }
         modelBounds.expandBy(xd, yd);
-        highlightedVertex = v;
+        highlightedCoordinate = c;
         drawLevel = DRAW_ALL;
+    }
+
+    public void highlightVertex(Vertex v) {
+        highlightCoordinate(v.getCoordinate());
     }
 
     public void enqueueHighlightedEdge(Edge de) {

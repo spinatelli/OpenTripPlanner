@@ -18,17 +18,19 @@ import static org.apache.commons.math3.util.FastMath.toRadians;
 import org.apache.commons.math3.util.FastMath;
 import org.opentripplanner.common.geometry.AccumulativeGridSampler;
 import org.opentripplanner.common.geometry.AccumulativeGridSampler.AccumulativeMetric;
-import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.IsolineBuilder;
 import org.opentripplanner.common.geometry.SparseMatrixZSampleGrid;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.geometry.ZSampleGrid;
+import org.opentripplanner.routing.algorithm.AStar;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.impl.SPTServiceFactory;
+import org.opentripplanner.routing.pathparser.BasicPathParser;
+import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
+import org.opentripplanner.routing.pathparser.PathParser;
 import org.opentripplanner.routing.spt.SPTWalker;
 import org.opentripplanner.routing.spt.SPTWalker.SPTVisitor;
 import org.opentripplanner.routing.spt.ShortestPathTree;
@@ -52,14 +54,11 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class SampleGridRenderer {
 
     private static final Logger LOG = LoggerFactory.getLogger(SampleGridRenderer.class);
-    private static final DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
     private Graph graph;
-    private SPTServiceFactory sptServiceFactory;
 
-    public SampleGridRenderer(Graph graph, SPTServiceFactory sptServiceFactory) {
+    public SampleGridRenderer(Graph graph) {
         this.graph = graph;
-        this.sptServiceFactory = sptServiceFactory;
     }
 
     /**
@@ -79,7 +78,9 @@ public class SampleGridRenderer {
                 - tOvershot : spgRequest.maxTimeSec + tOvershot));
         sptRequest.batch = (true);
         sptRequest.setRoutingContext(graph);
-        final ShortestPathTree spt = sptServiceFactory.instantiate().getShortestPathTree(sptRequest);
+        sptRequest.rctx.pathParsers = new PathParser[] { new BasicPathParser(), new NoThruTrafficPathParser() };
+        // TODO swap in different state dominance logic (earliest arrival, pareto, etc.)
+        final ShortestPathTree spt = new AStar().getShortestPathTree(sptRequest);
 
         // 3. Create a sample grid based on the SPT.
         long t1 = System.currentTimeMillis();
@@ -108,10 +109,10 @@ public class SampleGridRenderer {
      * Sample a SPT using a SPTWalker and an AccumulativeGridSampler.
      */
     public static void sampleSPT(final ShortestPathTree spt, ZSampleGrid<WTWD> sampleGrid,
-            final double d0, final double gridSizeMeters, final double v0,
+            final double d0, final double gridSizeMeters, final double offRoadSpeed,
             final double maxWalkDistance, final int maxTimeSec, final double cosLat) {
 
-        AccumulativeMetric<WTWD> accMetric = new WTWDAccumulativeMetric(cosLat, d0, v0, gridSizeMeters);
+        AccumulativeMetric<WTWD> accMetric = new WTWDAccumulativeMetric(cosLat, d0, offRoadSpeed, gridSizeMeters);
         final AccumulativeGridSampler<WTWD> gridSampler = new AccumulativeGridSampler<WTWD>(sampleGrid, accMetric);
 
         SPTWalker johnny = new SPTWalker(spt);
@@ -122,13 +123,13 @@ public class SampleGridRenderer {
             }
 
             @Override
-            public final void visit(Edge e, Coordinate c, State s0, State s1, double d0, double d1, double speed) {
+            public final void visit(Edge e, Coordinate c, State s0, State s1, double d0, double d1, double speedAlongEdge) {
                 double wd0 = s0.getWalkDistance() + d0;
                 double wd1 = s0.getWalkDistance() + d1;
                 double t0 = wd0 > maxWalkDistance ? Double.POSITIVE_INFINITY : s0.getActiveTime()
-                        + d0 / speed;
+                        + d0 / speedAlongEdge;
                 double t1 = wd1 > maxWalkDistance ? Double.POSITIVE_INFINITY : s1.getActiveTime()
-                        + d1 / speed;
+                        + d1 / speedAlongEdge;
                 if (t0 < maxTimeSec || t1 < maxTimeSec) {
                     if (!Double.isInfinite(t0) || !Double.isInfinite(t1)) {
                         WTWD z = new WTWD();
@@ -143,7 +144,7 @@ public class SampleGridRenderer {
                             z.wBoardings = s1.getNumBoardings();
                             z.wWalkDist = s1.getWalkDistance() + d1;
                         }
-                        gridSampler.addSamplingPoint(c, z, speed);
+                        gridSampler.addSamplingPoint(c, z, offRoadSpeed);
                     }
                 }
             }
@@ -231,17 +232,16 @@ public class SampleGridRenderer {
      */
     public static class WTWDAccumulativeMetric implements AccumulativeGridSampler.AccumulativeMetric<WTWD> {
 
-        private double cosLat, d0, v0, gridSizeMeters;
+        private double cosLat, d0, offRoadSpeed, gridSizeMeters;
 
         /**
          * @param cosLat
          * @param d0 distance off road?
-         * @param v0 walking speed off road
          */
-        public WTWDAccumulativeMetric (double cosLat, double d0, double v0, double gridSizeMeters) {
+        public WTWDAccumulativeMetric (double cosLat, double d0, double offRoadSpeed, double gridSizeMeters) {
             this.cosLat = cosLat;
             this.d0 = d0;
-            this.v0 = v0;
+            this.offRoadSpeed = offRoadSpeed;
             this.gridSizeMeters = gridSizeMeters;
         }
 
@@ -250,7 +250,7 @@ public class SampleGridRenderer {
             double t = z.wTime / z.w;
             double b = z.wBoardings / z.w;
             double wd = z.wWalkDist / z.w;
-            double d = distanceLibrary.fastDistance(C0, Cs, cosLat);
+            double d = SphericalDistanceLibrary.fastDistance(C0, Cs, cosLat);
             // additionnal time
             double dt = d / offRoadSpeed;
             // t weight
@@ -304,7 +304,7 @@ public class SampleGridRenderer {
                  * The computations below are approximation, but we are on the edge anyway and the
                  * current sample does not correspond to any computed value.
                  */
-            z.wTime = tMin + gridSizeMeters / v0;
+            z.wTime = tMin + gridSizeMeters / offRoadSpeed;
             z.wBoardings = bMin;
             z.wWalkDist = wdMin + gridSizeMeters;
             z.d = dMin + gridSizeMeters;

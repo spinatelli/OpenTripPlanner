@@ -37,7 +37,7 @@ import com.vividsolutions.jts.geom.LineString;
  * 
  * @author laurent
  */
-public class OnBoardDepartPatternHop extends Edge implements OnboardEdge {
+public class OnBoardDepartPatternHop extends Edge implements OnboardEdge, TemporaryEdge {
     private static final long serialVersionUID = 1L;
 
     private TripTimes tripTimes;
@@ -79,7 +79,7 @@ public class OnBoardDepartPatternHop extends Edge implements OnboardEdge {
          * Do not multiply by positionInHop, as it is already taken into account by the from vertex
          * location.
          */
-        return SphericalDistanceLibrary.getInstance().distance(getFromVertex().getY(),
+        return SphericalDistanceLibrary.distance(getFromVertex().getY(),
                 getFromVertex().getX(), endStop.getLat(), endStop.getLon());
     }
 
@@ -161,4 +161,8 @@ public class OnBoardDepartPatternHop extends Edge implements OnboardEdge {
         return tripTimes.getHeadsign(stopIndex);
     }
 
+    @Override
+    public void dispose() {
+        tov.removeIncoming(this);
+    }
 }
