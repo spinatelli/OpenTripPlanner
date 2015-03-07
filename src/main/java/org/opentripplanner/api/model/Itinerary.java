@@ -25,6 +25,8 @@ import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.opentripplanner.routing.core.Fare;
 import org.opentripplanner.routing.graph.Vertex;
 
+import com.vividsolutions.jts.geom.Coordinate;
+
 /**
  * An Itinerary is one complete way of getting from the start location to the end location.
  */
@@ -104,7 +106,7 @@ public class Itinerary {
      */
     public boolean tooSloped = false;
 
-    public Vertex pnrNode;
+    public Coordinate pnrNode;
 
     /** 
      * adds leg to array list
