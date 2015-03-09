@@ -11,7 +11,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.graph_builder.impl;
+package org.opentripplanner.graph_builder.module;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,7 +22,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.opentripplanner.common.model.GenericLocation;
-import org.opentripplanner.graph_builder.services.GraphBuilder;
+import org.opentripplanner.graph_builder.GraphBuilder;
+import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.routing.algorithm.GenericDijkstra;
 import org.opentripplanner.routing.algorithm.ProfileDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.MultiTargetTerminationStrategy;
@@ -49,9 +50,9 @@ import com.google.common.collect.Sets;
  * {@link GraphBuilder} plugin that computes access nodes for every street node. Should be called
  * after both the transit network and street network are loaded.
  */
-public class PNRNodeGraphBuilderImpl implements GraphBuilder {
+public class PNRNodeModule implements GraphBuilderModule {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PNRNodeGraphBuilderImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PNRNodeModule.class);
 
     private static final int STEP = 5;
 
@@ -75,7 +76,6 @@ public class PNRNodeGraphBuilderImpl implements GraphBuilder {
             vmap.put(vertices.get(i).getLabel(), i);
         }
 
-        // graph.index(new DefaultStreetVertexIndexFactory());
         int stopsize = Sets.newHashSet(Iterables.filter(vertices, ParkAndRideVertex.class)).size();
         Set<Vertex> parkings = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
                 ParkAndRideVertex.class)));
@@ -175,7 +175,7 @@ public class PNRNodeGraphBuilderImpl implements GraphBuilder {
 
             List<State> states = new ArrayList<State>();
             for (Vertex v : profiles.keySet()) {
-                if (!v.equals(ts) && profiles.get(v).containsKey(ts) && profiles.containsKey(ts)) {
+                if (!v.equals(ts) && profiles.get(v).containsKey(ts) && profiles.containsKey(ts) && profiles.get(ts).containsKey(v)) {
                     State s = new State(v, options);
                     StateEditor s1 = s.edit(null);
                     s1.incrementWeight(profiles.get(ts).get(v));

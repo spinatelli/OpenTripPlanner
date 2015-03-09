@@ -11,7 +11,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.graph_builder.impl;
+package org.opentripplanner.graph_builder.module;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,7 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.opentripplanner.common.model.GenericLocation;
-import org.opentripplanner.graph_builder.services.GraphBuilder;
+import org.opentripplanner.graph_builder.GraphBuilder;
+import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -32,9 +33,9 @@ import com.google.common.collect.Iterables;
  * {@link GraphBuilder} plugin that computes access nodes for every street node. Should be called
  * after both the transit network and street network are loaded.
  */
-public class StreetDirectionGraphBuilderImpl implements GraphBuilder {
+public class StreetDirectionModule implements GraphBuilderModule {
 
-    private static final Logger LOG = LoggerFactory.getLogger(StreetDirectionGraphBuilderImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(StreetDirectionModule.class);
 
     private GenericLocation reference;
 
@@ -46,7 +47,7 @@ public class StreetDirectionGraphBuilderImpl implements GraphBuilder {
         return Arrays.asList("streets"); // transit yes or no?
     }
     
-    public StreetDirectionGraphBuilderImpl(GenericLocation reference) {
+    public StreetDirectionModule(GenericLocation reference) {
         this.reference = reference;
     }
 

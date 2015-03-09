@@ -16,6 +16,11 @@ import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.impl.GraphPathFinder;
+import org.opentripplanner.routing.pathparser.BasicPathParser;
+import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
+import org.opentripplanner.routing.pathparser.PathParser;
+import org.opentripplanner.routing.spt.DominanceFunction;
 import org.opentripplanner.util.DateUtils;
 
 public class TestInput {
@@ -149,7 +154,9 @@ public class TestInput {
     }
     
     public void generateRequest(RoutingRequest rq, Graph graph) {
-        rq.numItineraries = 2;
+        rq.routerId = "default";
+        rq.from = new GenericLocation(getFromLat(), getFromLon());
+        rq.to = new GenericLocation(getToLat(), getToLon());
         rq.maxWalkDistance = 1207.008;
         rq.wheelchairAccessible = false;
         rq.showIntermediateStops = false;
@@ -162,8 +169,16 @@ public class TestInput {
         rq.twoway = true;
         rq.dateTime = fieldsToDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
         rq.returnDateTime = fieldsToDateTime(departureDate, departureTime, graph.getTimeZone());
-        rq.from = new GenericLocation(getFromLat(), getFromLon());
-        rq.to = new GenericLocation(getToLat(), getToLon());
-        rq.setRoutingContext(graph);
+        if (rq.rctx == null) {
+            rq.setRoutingContext(graph);
+            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                    new NoThruTrafficPathParser() };
+        }       
+        rq.numItineraries = 2;
+        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+        rq.longDistance = true;
+        if (rq.maxWalkDistance == Double.MAX_VALUE) rq.maxWalkDistance = 2000;
+        if (rq.maxWalkDistance > 15000) rq.maxWalkDistance = 15000;
+        rq.maxTransfers = 4;
     }
 }

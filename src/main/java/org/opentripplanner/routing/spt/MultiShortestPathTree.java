@@ -71,8 +71,8 @@ public class MultiShortestPathTree extends ShortestPathTree {
         }
     }
 
-    public MultiShortestPathTree(RoutingRequest options) {
-        super(options);
+    public MultiShortestPathTree(RoutingRequest options, DominanceFunction dominanceFunction) {
+        super(options, dominanceFunction);
         stateSets = new IdentityHashMap<Vertex, List<State>>();
     }
 
@@ -180,7 +180,7 @@ public class MultiShortestPathTree extends ShortestPathTree {
             return null;
         State ret = null;
         for (State s : states) {
-            if ((ret == null || s.betterThan(ret)) && s.isFinal() && s.allPathParsersAccept()) {
+            if ((ret == null || dominates(s, ret)) && s.isFinal() && s.allPathParsersAccept()) {
                 ret = s;
             }
         }

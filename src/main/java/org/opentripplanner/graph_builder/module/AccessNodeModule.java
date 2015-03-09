@@ -11,7 +11,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.graph_builder.impl;
+package org.opentripplanner.graph_builder.module;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.opentripplanner.common.model.GenericLocation;
-import org.opentripplanner.graph_builder.services.GraphBuilder;
+import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.routing.algorithm.ANDijkstra;
 import org.opentripplanner.routing.algorithm.ProfileDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.MultiTargetTerminationStrategy;
@@ -50,9 +50,9 @@ import com.google.common.collect.Sets;
  * {@link GraphBuilder} plugin that computes access nodes for every street node. Should be called
  * after both the transit network and street network are loaded.
  */
-public class AccessNodeGraphBuilderImpl implements GraphBuilder {
+public class AccessNodeModule implements GraphBuilderModule {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AccessNodeGraphBuilderImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AccessNodeModule.class);
 
     private static final int STEP = 1;
 
@@ -74,7 +74,8 @@ public class AccessNodeGraphBuilderImpl implements GraphBuilder {
         List<Vertex> vertices = new ArrayList<Vertex>();
         vertices.addAll(graph.getVertices());
 
-        graph.index(new DefaultStreetVertexIndexFactory());
+        if (graph.streetIndex == null)
+            graph.index(new DefaultStreetVertexIndexFactory());
         Set<Vertex> stops = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
                 TransitStop.class)));
 

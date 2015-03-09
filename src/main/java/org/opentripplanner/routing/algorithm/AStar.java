@@ -25,7 +25,7 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.*;
+import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.util.DateUtils;
 import org.opentripplanner.util.monitoring.MonitoringStore;
 import org.opentripplanner.util.monitoring.MonitoringStoreFactory;
@@ -41,7 +41,7 @@ import com.beust.jcommander.internal.Lists;
  * NOTE this is now per-request scoped, which has caused some threading problems in the past.
  * Always make one new instance of this class per request, it contains a lot of state fields.
  */
-public class AStar {
+public class AStar implements Algorithm {
 
     private static final Logger LOG = LoggerFactory.getLogger(AStar.class);
     // FIXME this is not really a factory, it's a way to fake a global variable. This should be stored at the OTPServer level.

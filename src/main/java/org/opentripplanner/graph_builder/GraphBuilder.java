@@ -21,11 +21,18 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.MissingNode;
-import com.google.common.collect.Lists;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
-import org.opentripplanner.graph_builder.module.*;
+import org.opentripplanner.graph_builder.module.AccessNodeModule;
+import org.opentripplanner.graph_builder.module.BikePNRNodeModule;
+import org.opentripplanner.graph_builder.module.DirectTransferGenerator;
+import org.opentripplanner.graph_builder.module.EmbedConfig;
+import org.opentripplanner.graph_builder.module.GtfsModule;
+import org.opentripplanner.graph_builder.module.PNRNodeModule;
+import org.opentripplanner.graph_builder.module.PruneFloatingIslands;
+import org.opentripplanner.graph_builder.module.StreetDirectionModule;
+import org.opentripplanner.graph_builder.module.TransitToStreetNetworkModule;
+import org.opentripplanner.graph_builder.module.TransitToTaggedStopsModule;
 import org.opentripplanner.graph_builder.module.map.BusRouteStreetMatcher;
 import org.opentripplanner.graph_builder.module.ned.ElevationModule;
 import org.opentripplanner.graph_builder.module.ned.GeotiffGridCoverageFactoryImpl;
@@ -48,6 +55,9 @@ import org.opentripplanner.standalone.OTPMain;
 import org.opentripplanner.standalone.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Lists;
 
 /**
  * This makes a Graph out of various inputs like GTFS and OSM.
@@ -283,6 +293,26 @@ public class GraphBuilder implements Runnable {
         if (builderParams.htmlAnnotations) {
             graphBuilder.addGraphBuilder(new AnnotationsToHTML(new File(params.build, "report.html")));
         }
+        
+        // add a new graphbuilder that adds access nodes and PNR nodes for every street node
+        if (builderParams.computeAccessNodes && hasOSM && hasGTFS) {
+            if (params.cityCenter != null) {
+                String[] coords = params.cityCenter.split(",");
+                if (coords.length == 2) {
+                    double lat = Double.parseDouble(coords[0]), lon = Double.parseDouble(coords[1]);
+                    GenericLocation center = new GenericLocation(lat, lon);
+                    GraphBuilderModule streetDirectionBuilder = new StreetDirectionModule(center);
+                    graphBuilder.addGraphBuilder(streetDirectionBuilder);
+                }
+            }
+            GraphBuilderModule accessNodeBuilder = new AccessNodeModule();
+            graphBuilder.addGraphBuilder(accessNodeBuilder);
+            GraphBuilderModule pnrNodeBuilder = new PNRNodeModule();
+            graphBuilder.addGraphBuilder(pnrNodeBuilder);
+            GraphBuilderModule bikePNRNodeBuilder = new BikePNRNodeModule();
+            graphBuilder.addGraphBuilder(bikePNRNodeBuilder);
+        }
+        
         graphBuilder.serializeGraph = ( ! params.inMemory ) || params.preFlight;
         return graphBuilder;
     }

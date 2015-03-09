@@ -23,6 +23,9 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.pathparser.BasicPathParser;
+import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
+import org.opentripplanner.routing.pathparser.PathParser;
 import org.opentripplanner.routing.request.BannedStopSet;
 import org.opentripplanner.standalone.Router;
 
@@ -193,6 +196,7 @@ public class TwoWayOutput {
 
     public void generateRequest(RoutingRequest rq, Graph graph) {
         rq.numItineraries = 1;
+        rq.routerId = "default";
         rq.setArriveBy(true);
         rq.dateTime = TestInput.fieldsToDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
         rq.returnDateTime = TestInput.fieldsToDateTime(departureDate, departureTime, graph.getTimeZone());
@@ -202,5 +206,7 @@ public class TwoWayOutput {
         rq.from = new GenericLocation(getFromLat(), getFromLon());
         rq.to = new GenericLocation(getToLat(), getToLon());
         rq.setRoutingContext(graph);
+        rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                new NoThruTrafficPathParser() };
     }
 }

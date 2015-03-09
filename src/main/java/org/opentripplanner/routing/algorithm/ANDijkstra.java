@@ -27,7 +27,7 @@ import org.opentripplanner.routing.edgetype.ParkAndRideLinkEdge;
 import org.opentripplanner.routing.edgetype.StreetBikeParkLink;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.BasicShortestPathTree;
+import org.opentripplanner.routing.spt.DominanceFunction;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
@@ -77,7 +77,7 @@ public class ANDijkstra {
         if (options.rctx != null) {
             target = initialState.getOptions().rctx.target;
         }
-        ShortestPathTree spt = new BasicShortestPathTree(options);
+        ShortestPathTree spt = new DominanceFunction.MinimumWeight().getNewShortestPathTree(options);
         BinHeap<State> queue = new BinHeap<State>(1000);
 
         if (initialStates != null)
@@ -146,7 +146,7 @@ public class ANDijkstra {
                         if (v.exceedsWeightLimit(options.maxWeight))
                             continue;
                         if (spt.add(v)) {
-                            double estimate = heuristic.computeForwardWeight(v, target);
+                            double estimate = heuristic.estimateRemainingWeight(v);
                             queue.insert(v, v.getWeight() + estimate);
                             if (traverseVisitor != null)
                                 traverseVisitor.visitEnqueue(v);
@@ -154,7 +154,6 @@ public class ANDijkstra {
                     }
                 }
             }
-            spt.postVisit(u);
         }
 
         return spt;

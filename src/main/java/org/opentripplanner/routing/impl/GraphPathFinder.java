@@ -13,17 +13,24 @@
 
 package org.opentripplanner.routing.impl;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import org.onebusaway.gtfs.model.AgencyAndId;
 import static org.opentripplanner.routing.automata.Nonterminal.choice;
 import static org.opentripplanner.routing.automata.Nonterminal.optional;
 import static org.opentripplanner.routing.automata.Nonterminal.plus;
 import static org.opentripplanner.routing.automata.Nonterminal.seq;
 import static org.opentripplanner.routing.automata.Nonterminal.star;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.AStar;
+import org.opentripplanner.routing.algorithm.Algorithm;
+import org.opentripplanner.routing.algorithm.PNRDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.EuclideanRemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.InterleavedBidirectionalHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
@@ -32,11 +39,18 @@ import org.opentripplanner.routing.automata.DFA;
 import org.opentripplanner.routing.automata.Nonterminal;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.edgetype.*;
+import org.opentripplanner.routing.edgetype.LegSwitchingEdge;
+import org.opentripplanner.routing.edgetype.OnboardEdge;
+import org.opentripplanner.routing.edgetype.PathwayEdge;
+import org.opentripplanner.routing.edgetype.SimpleTransfer;
+import org.opentripplanner.routing.edgetype.StationEdge;
+import org.opentripplanner.routing.edgetype.StationStopEdge;
+import org.opentripplanner.routing.edgetype.StreetTransitLink;
+import org.opentripplanner.routing.edgetype.TimedTransferEdge;
+import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.routing.error.VertexNotFoundException;
 import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.pathparser.PathParser;
 import org.opentripplanner.routing.spt.DominanceFunction;
@@ -47,7 +61,8 @@ import org.opentripplanner.standalone.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * This class contains the logic for repeatedly building shortest path trees and accumulating paths through
@@ -98,7 +113,11 @@ public class GraphPathFinder {
         }
 
         // Reuse one instance of AStar for all N requests, which are carried out sequentially
-        AStar aStar = new AStar();
+        Algorithm algorithm;
+        if(options.twoway)
+            algorithm = new PNRDijkstra();
+        else
+            algorithm = new AStar();
         if (options.rctx == null) {
             options.setRoutingContext(router.graph);
             /* Use a pathparser that constrains the search to use SimpleTransfers. */
@@ -106,7 +125,7 @@ public class GraphPathFinder {
         }
         // If this Router has a GraphVisualizer attached to it, set it as a callback for the AStar search
         if (router.graphVisualizer != null) {
-            aStar.setTraverseVisitor(router.graphVisualizer.traverseVisitor);
+            algorithm.setTraverseVisitor(router.graphVisualizer.traverseVisitor);
             // options.disableRemainingWeightHeuristic = true; // DEBUG
         }
 
@@ -162,7 +181,7 @@ public class GraphPathFinder {
                 options.rctx.aborted = true;
                 break;
             }
-            ShortestPathTree spt = aStar.getShortestPathTree(options, timeout);
+            ShortestPathTree spt = algorithm.getShortestPathTree(options, timeout);
             if (spt == null) {
                 LOG.warn("SPT was null."); // unknown failure
                 return null;
@@ -185,7 +204,8 @@ public class GraphPathFinder {
             LOG.debug("we have {} paths", paths.size());
         }
         LOG.debug("END SEARCH ({} msec)", System.currentTimeMillis() - searchBeginTime);
-        Collections.sort(paths, new PathWeightComparator());
+        if(!options.twoway)
+            Collections.sort(paths, new PathWeightComparator());
         return paths;
     }
 
@@ -320,19 +340,21 @@ public class GraphPathFinder {
         }
 
         /* Detect and report that most obnoxious of bugs: path reversal asymmetry. */
-        Iterator<GraphPath> gpi = paths.iterator();
-        while (gpi.hasNext()) {
-            GraphPath graphPath = gpi.next();
-            // TODO check, is it possible that arriveBy and time are modifed in-place by the search?
-            if (request.arriveBy) {
-                if (graphPath.states.getLast().getTimeSeconds() > request.dateTime) {
-                    LOG.error("A graph path arrives after the requested time. This implies a bug.");
-                    gpi.remove();
-                }
-            } else {
-                if (graphPath.states.getFirst().getTimeSeconds() < request.dateTime) {
-                    LOG.error("A graph path leaves before the requested time. This implies a bug.");
-                    gpi.remove();
+        if(!request.twoway) {
+            Iterator<GraphPath> gpi = paths.iterator();
+            while (gpi.hasNext()) {
+                GraphPath graphPath = gpi.next();
+                // TODO check, is it possible that arriveBy and time are modifed in-place by the search?
+                if (request.arriveBy) {
+                    if (graphPath.states.getLast().getTimeSeconds() > request.dateTime) {
+                        LOG.error("A graph path arrives after the requested time. This implies a bug.");
+                        gpi.remove();
+                    }
+                } else {
+                    if (graphPath.states.getFirst().getTimeSeconds() < request.dateTime) {
+                        LOG.error("A graph path leaves before the requested time. This implies a bug.");
+                        gpi.remove();
+                    }
                 }
             }
         }

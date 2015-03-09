@@ -127,7 +127,7 @@ public class Graph implements Serializable, Cloneable {
 
     private transient Map<Integer, Edge> edgeById;
 
-    public transient StreetVertexIndexService streetIndex;
+    public transient StreetVertexIndexService streetIndex = null;
 
     public transient GraphIndex index;
 

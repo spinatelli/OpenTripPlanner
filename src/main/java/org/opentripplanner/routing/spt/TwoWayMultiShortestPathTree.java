@@ -24,13 +24,11 @@ import java.util.Set;
 
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TwoWayMultiShortestPathTree implements ShortestPathTree {
+public class TwoWayMultiShortestPathTree extends ShortestPathTree {
 
     private static final Logger LOG = LoggerFactory.getLogger(TwoWayMultiShortestPathTree.class);
 
@@ -45,7 +43,7 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
     
     @Override
     public List<GraphPath> getPaths() {
-        return getPaths(to, true);
+        return getPaths(null, true);
     }
     
     private List<GraphPath> getSPTPaths(ShortestPathTree spt, Vertex dest, Map<Vertex, GraphPath> map, boolean optimize) {
@@ -100,6 +98,7 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
     }
 
     public TwoWayMultiShortestPathTree(RoutingRequest options, ShortestPathTree out, ShortestPathTree in, Vertex from, Vertex to) {
+        super(options, null);
         this.options = options;
         this.out = out;
         this.in = in;
@@ -126,7 +125,7 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
             return null;
         State ret = null;
         for (State s : states) {
-            if ((ret == null || s.betterThan(ret)) && s.isFinal(true) && s.allPathParsersAccept()) {
+            if ((ret == null || dominanceFunction.betterOrEqual(s, ret)) && s.isFinal(true) && s.allPathParsersAccept()) {
                 ret = s;
             }
         }
@@ -139,7 +138,7 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
             return null;
         State ret = null;
         for (State s : states) {
-            if ((ret == null || s.betterThan(ret)) && s.isFinal(true) && s.allPathParsersAccept()) {
+            if ((ret == null || dominanceFunction.betterOrEqual(s, ret)) && s.isFinal(true) && s.allPathParsersAccept()) {
                 ret = s;
             }
         }
@@ -147,10 +146,10 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
     }
 
     @Override
-    public List<? extends State> getStates(Vertex dest) {
+    public List<State> getStates(Vertex dest) {
         return out.getStates(dest);
     }
-    public List<? extends State> getStatesIn(Vertex dest) {
+    public List<State> getStatesIn(Vertex dest) {
         return in.getStates(dest);
     }
 
@@ -177,10 +176,6 @@ public class TwoWayMultiShortestPathTree implements ShortestPathTree {
         allStates.addAll(out.getAllStates());
         allStates.addAll(in.getAllStates());
         return allStates;
-    }
-
-    @Override
-    public void postVisit(State u) {
     }
     
     @Override

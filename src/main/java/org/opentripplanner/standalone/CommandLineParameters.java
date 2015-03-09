@@ -184,7 +184,7 @@ public class CommandLineParameters implements Cloneable {
 
     @Parameter(names = {"--router"}, validateWith = RouterId.class,
             description = "One or more router IDs to build and/or serve, first one being the default.")
-    public List<String> routerIds;
+    public List<String> routerIds = new ArrayList<String>();
 
     @Parameter(names = {"--server"},
             description = "Run an OTP API server.")
