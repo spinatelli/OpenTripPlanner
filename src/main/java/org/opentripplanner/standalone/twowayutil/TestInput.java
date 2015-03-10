@@ -130,28 +130,6 @@ public class TestInput {
     public void setId(int id) {
         this.id = id;
     }
-
-    public static int fieldsToDateTime(String date, String time, TimeZone tz) {
-        if (date == null && time != null) {
-            try {
-                // If the time query param doesn't specify a timezone, use the graph's default. See issue #1373.
-                DatatypeFactory df = javax.xml.datatype.DatatypeFactory.newInstance();
-                XMLGregorianCalendar xmlGregCal = df.newXMLGregorianCalendar(time);
-                GregorianCalendar gregCal = xmlGregCal.toGregorianCalendar();
-                if (xmlGregCal.getTimezone() == DatatypeConstants.FIELD_UNDEFINED) {
-                    gregCal.setTimeZone(tz);
-                }
-                Date dateObject = gregCal.getTime();
-                return (int) (dateObject.getTime()/1000);
-            } catch (DatatypeConfigurationException e) {
-                Date dateObject = DateUtils.toDate(date, time, tz);
-                return (int) (dateObject.getTime()/1000);
-            }
-        } else {
-            Date dateObject = DateUtils.toDate(date, time, tz);
-            return (int) (dateObject.getTime()/1000);
-        }
-    }
     
     public void generateRequest(RoutingRequest rq, Graph graph) {
         rq.routerId = "default";
@@ -161,24 +139,24 @@ public class TestInput {
         rq.wheelchairAccessible = false;
         rq.showIntermediateStops = false;
         rq.clampInitialWait = -1;
-        rq.arriveBy = true;
-        rq.routerId = "default";
+        rq.setArriveBy(true);
         rq.locale = Locale.ENGLISH;
         rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
         rq.parkAndRide = true;
         rq.twoway = true;
-        rq.dateTime = fieldsToDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
-        rq.returnDateTime = fieldsToDateTime(departureDate, departureTime, graph.getTimeZone());
-        if (rq.rctx == null) {
-            rq.setRoutingContext(graph);
-            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
-                    new NoThruTrafficPathParser() };
-        }       
+        rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
+        rq.returnDateTime = rq.dateTime;
+        rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
+//        if (rq.rctx == null) {
+//            rq.setRoutingContext(graph);
+//            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+//                    new NoThruTrafficPathParser() };
+//        }       
         rq.numItineraries = 2;
-        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
-        rq.longDistance = true;
-        if (rq.maxWalkDistance == Double.MAX_VALUE) rq.maxWalkDistance = 2000;
-        if (rq.maxWalkDistance > 15000) rq.maxWalkDistance = 15000;
-        rq.maxTransfers = 4;
+//        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+//        rq.longDistance = true;
+//        if (rq.maxWalkDistance == Double.MAX_VALUE) rq.maxWalkDistance = 2000;
+//        if (rq.maxWalkDistance > 15000) rq.maxWalkDistance = 15000;
+//        rq.maxTransfers = 4;
     }
 }

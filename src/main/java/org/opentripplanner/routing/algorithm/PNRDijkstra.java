@@ -256,10 +256,7 @@ public class PNRDijkstra implements Algorithm {
 
             // Iterate over traversal results. When an edge leads nowhere (as indicated by
             // returning NULL), the iteration is over. TODO Use this to board multiple trips.
-            State v = edge.traverse(runState.u);
-            if(v==null)
-                LOG.debug("Fuck you");
-            for (; v != null; v = v.getNextResult()) {
+            for (State v = edge.traverse(runState.u); v != null; v = v.getNextResult()) {
                 if (traverseVisitor != null) {
                     traverseVisitor.visitEdge(edge, v);
                 }
@@ -442,6 +439,8 @@ public class PNRDijkstra implements Algorithm {
                 break;
 
             if (!iterate(queueIn)) {
+                if (queue.empty())
+                    addAllFromMilestoneSet(queue, milestoneSet);
                 continue;
             }
             
@@ -502,8 +501,8 @@ public class PNRDijkstra implements Algorithm {
                 }
             }
 
-            if (runState.pqIn.size() <= 0 || runState.pqOut.size() <= 0)
-                LOG.info("WTF");
+            if (queue.size() < 5 && queue.size()>0)
+                LOG.debug("last");
             if (queue.empty())
                 addAllFromMilestoneSet(queue, milestoneSet);
 

@@ -106,6 +106,8 @@ public abstract class GraphPathToTripPlanConverter {
         for (GraphPath path : paths) {
             Itinerary itinerary = generateItinerary(path, request.showIntermediateStops);
             itinerary = adjustItinerary(request, itinerary);
+            if(path.pnrNode != null)
+                itinerary.pnrNode = path.pnrNode.getCoordinate();
             plan.addItinerary(itinerary);
         }
         if (plan != null) {

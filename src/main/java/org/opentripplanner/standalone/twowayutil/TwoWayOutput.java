@@ -27,6 +27,7 @@ import org.opentripplanner.routing.pathparser.BasicPathParser;
 import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
 import org.opentripplanner.routing.pathparser.PathParser;
 import org.opentripplanner.routing.request.BannedStopSet;
+import org.opentripplanner.routing.spt.DominanceFunction;
 import org.opentripplanner.standalone.Router;
 
 public class TwoWayOutput {
@@ -83,6 +84,8 @@ public class TwoWayOutput {
         setToLon(info.getToLon());
         setDepartureTime(info.getDepartureTime());
         setArrivalTime(info.getArrivalTime());
+        setDepartureDate(info.getDepartureDate());
+        setArrivalDate(info.getArrivalDate());
         setTime(t);
     }
 
@@ -195,18 +198,28 @@ public class TwoWayOutput {
     }
 
     public void generateRequest(RoutingRequest rq, Graph graph) {
-        rq.numItineraries = 1;
         rq.routerId = "default";
-        rq.setArriveBy(true);
-        rq.dateTime = TestInput.fieldsToDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
-        rq.returnDateTime = TestInput.fieldsToDateTime(departureDate, departureTime, graph.getTimeZone());
-        rq.modes = new TraverseModeSet(TraverseMode.CAR);
-        rq.parkAndRide = true;
-        rq.twoway = false;
         rq.from = new GenericLocation(getFromLat(), getFromLon());
         rq.to = new GenericLocation(getToLat(), getToLon());
-        rq.setRoutingContext(graph);
-        rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
-                new NoThruTrafficPathParser() };
+        rq.maxWalkDistance = 1207.008;
+        rq.wheelchairAccessible = false;
+        rq.showIntermediateStops = false;
+        rq.clampInitialWait = -1;
+        rq.setArriveBy(true);
+        rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
+        rq.parkAndRide = true;
+        rq.twoway = false;
+        rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
+        rq.returnDateTime = rq.dateTime;
+        rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
+//        if (rq.rctx == null) {
+//            rq.setRoutingContext(graph);
+//            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+//                    new NoThruTrafficPathParser() };
+//        }
+        rq.numItineraries = 1;
+//        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+//        rq.longDistance = true;
+//        rq.maxTransfers = 4;
     }
 }

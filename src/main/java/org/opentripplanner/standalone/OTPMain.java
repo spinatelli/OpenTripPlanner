@@ -19,9 +19,7 @@ import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Locale;
 
-import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.graph_builder.GraphBuilder;
-import org.opentripplanner.routing.algorithm.AStar;
 import org.opentripplanner.routing.algorithm.Algorithm;
 import org.opentripplanner.routing.algorithm.PNRDijkstra;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -32,9 +30,6 @@ import org.opentripplanner.routing.impl.GraphPathFinder;
 import org.opentripplanner.routing.impl.GraphScanner;
 import org.opentripplanner.routing.impl.InputStreamGraphSource;
 import org.opentripplanner.routing.impl.MemoryGraphSource;
-import org.opentripplanner.routing.pathparser.BasicPathParser;
-import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
-import org.opentripplanner.routing.pathparser.PathParser;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.spt.DominanceFunction;
 import org.opentripplanner.routing.spt.GraphPath;
@@ -45,7 +40,6 @@ import org.opentripplanner.scripting.impl.BSFOTPScript;
 import org.opentripplanner.scripting.impl.OTPScript;
 import org.opentripplanner.standalone.twowayutil.BBox;
 import org.opentripplanner.standalone.twowayutil.TwoWayTester;
-import org.opentripplanner.util.DateUtils;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -215,38 +209,38 @@ public class OTPMain {
         }
 
         if (params.twoWayTest) {
-            // TwoWayTester tester = new TwoWayTester(otpServer);
-            // tester.twoWayTest(params.testInput, params.testOutput);
-            Router router = otpServer.getRouter("default");
-            GraphPathFinder gpFinder = new GraphPathFinder(router);
-            RoutingRequest rq = router.defaultRoutingRequest.clone();
-            rq.routerId = "default";
-            rq.setFromString("45.50674541159436,9.195583462715149");
-            rq.setToString("45.46817080880512,9.19528841972351");
-            rq.maxWalkDistance = 1207.008;
-            rq.wheelchairAccessible = false;
-            
-            rq.showIntermediateStops = false;
-            rq.clampInitialWait = -1;
-            rq.arriveBy = false;
-            rq.locale = Locale.ENGLISH;
-            rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
-            rq.parkAndRide = true;
-            // rq.twoway = true;
-            rq.setDateTime("03-07-2015", "9:09am", router.graph.getTimeZone());
-            if (rq.rctx == null) {
-                rq.setRoutingContext(router.graph);
-//                rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
-//                        new NoThruTrafficPathParser() };
-            }
-            rq.numItineraries = 2;
-            rq.dominanceFunction = new DominanceFunction.MinimumWeight();
-            rq.longDistance = true;
-            rq.maxTransfers = 4;
-            Algorithm d = new PNRDijkstra();
-            List<GraphPath> paths = d.getShortestPathTree(rq).getPaths();
-            if (paths.isEmpty())
-                LOG.info("WTF");
+             TwoWayTester tester = new TwoWayTester(otpServer);
+             tester.twoWayTest(params.testInput, params.testOutput);
+//            Router router = otpServer.getRouter("default");
+//            GraphPathFinder gpFinder = new GraphPathFinder(router);
+//            RoutingRequest rq = router.defaultRoutingRequest.clone();
+//            rq.routerId = "default";
+//            rq.setFromString("45.50674541159436,9.195583462715149");
+//            rq.setToString("45.46817080880512,9.19528841972351");
+//            rq.maxWalkDistance = 1207.008;
+//            rq.wheelchairAccessible = false;
+//
+//            rq.showIntermediateStops = false;
+//            rq.clampInitialWait = -1;
+//            rq.arriveBy = false;
+//            rq.locale = Locale.ENGLISH;
+//            rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
+//            rq.parkAndRide = true;
+//            // rq.twoway = true;
+//            rq.setDateTime("03-07-2015", "9:09am", router.graph.getTimeZone());
+//            if (rq.rctx == null) {
+//                rq.setRoutingContext(router.graph);
+//                // rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+//                // new NoThruTrafficPathParser() };
+//            }
+//            rq.numItineraries = 2;
+//            rq.dominanceFunction = new DominanceFunction.MinimumWeight();
+//            rq.longDistance = true;
+//            rq.maxTransfers = 4;
+//            Algorithm d = new PNRDijkstra();
+//            List<GraphPath> paths = d.getShortestPathTree(rq).getPaths();
+//            if (paths.isEmpty())
+//                LOG.info("WTF");
             System.exit(0);
         }
 

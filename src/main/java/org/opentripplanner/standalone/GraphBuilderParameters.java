@@ -77,6 +77,11 @@ public class GraphBuilderParameters {
     /**
      * Perform Access Node and PNR Access Node computation
      */
+    public final boolean staticBikeParkAndRide;
+
+    /**
+     * Perform Access Node and PNR Access Node computation
+     */
     public final boolean computeAccessNodes;
 
     /**
@@ -98,6 +103,7 @@ public class GraphBuilderParameters {
         areaVisibility = config.path("areaVisibility").asBoolean(false);
         matchBusRoutesToStreets = config.path("matchBusRoutesToStreets").asBoolean(false);
         fetchElevationUS = config.path("fetchElevationUS").asBoolean(false);
+        staticBikeParkAndRide = config.path("staticBikeParkAndRide").asBoolean(false);
         computeAccessNodes = config.path("computeAccessNodes").asBoolean(false);
 
     }
