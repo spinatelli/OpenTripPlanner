@@ -92,44 +92,46 @@ public class TwoWayTester {
         GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent
                                                                 // router-scoped GraphPathFinder but
                                                                 // there's no setup cost here
-        // for(TestInput info: infos) {
-        TestInput info = infos.get(0);
-        LOG.info("Routing " + info);
-        RoutingRequest rq = router.defaultRoutingRequest.clone();
-
-        info.generateRequest(rq, router.graph);
-        try {
-            long time, time2, t;
-            LOG.info("Planning " + i);
-            time = System.currentTimeMillis();
-            List<GraphPath> paths = find(router, rq);
-            if (paths.isEmpty())
-                LOG.info("WTF");
-            TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
-            time2 = System.currentTimeMillis();
-            t = time2 - time;
-            LOG.info("Took " + t + " millis");
-            newTime(t);
-            TwoWayOutput out = new TwoWayOutput(info, (int) t);
-            t = -1;
-            if (plan != null) {
-                t = plan.itinerary.get(0).duration + plan.itinerary.get(1).duration;
-                avgDuration += t;
-                if (plan.itinerary.get(0).pnrNode != null) {
-                    LOG.info(plan.itinerary.get(0).pnrNode.toString());
-                    out.setParkingLat(plan.itinerary.get(0).pnrNode.y);
-                    out.setParkingLon(plan.itinerary.get(0).pnrNode.x);
+        for(TestInput info: infos) {
+//        TestInput info = infos.get(0);
+            LOG.info("Routing " + info);
+            RoutingRequest rq = router.defaultRoutingRequest.clone();
+    
+            info.generateRequest(rq, router.graph);
+            try {
+                long time, time2, t;
+                LOG.info("Planning " + i);
+                time = System.currentTimeMillis();
+                List<GraphPath> paths;// = find(router, rq);
+                // why doesn't this work
+                paths = gpFinder.getPaths(rq);
+                if (paths.isEmpty())
+                    LOG.info("WTF");
+                TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
+                time2 = System.currentTimeMillis();
+                t = time2 - time;
+                LOG.info("Took " + t + " millis");
+                newTime(t);
+                TwoWayOutput out = new TwoWayOutput(info, (int) t);
+                t = -1;
+                if (plan != null) {
+                    t = plan.itinerary.get(0).duration + plan.itinerary.get(1).duration;
+                    avgDuration += t;
+                    if (plan.itinerary.get(0).pnrNode != null) {
+                        LOG.info(plan.itinerary.get(0).pnrNode.toString());
+                        out.setParkingLat(plan.itinerary.get(0).pnrNode.y);
+                        out.setParkingLon(plan.itinerary.get(0).pnrNode.x);
+                    }
                 }
+                out.setDuration((int) t);
+                LOG.info("Iteration " + i + " time " + t);
+                outputs.add(out);
+                i++;
+            } catch (PathNotFoundException e) {
+                LOG.error("Path not found");
+                skipped++;
             }
-            out.setDuration((int) t);
-            LOG.info("Iteration " + i + " time " + t);
-            outputs.add(out);
-            i++;
-        } catch (PathNotFoundException e) {
-            LOG.error("Path not found");
-            skipped++;
         }
-        // }
 
         try {
             csv.toFile(testOutput, outputs);

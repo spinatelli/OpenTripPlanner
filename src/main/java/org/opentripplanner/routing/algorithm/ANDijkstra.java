@@ -48,6 +48,8 @@ public class ANDijkstra {
     public TraverseVisitor traverseVisitor;
 
     private boolean verbose = false;
+    
+    private double heuristicCoeff = 1.0;
 
     private RemainingWeightHeuristic heuristic = new TrivialRemainingWeightHeuristic();
 
@@ -57,6 +59,12 @@ public class ANDijkstra {
 
     public void setSearchTerminationStrategy(SearchTerminationStrategy searchTerminationStrategy) {
         this.searchTerminationStrategy = searchTerminationStrategy;
+    }
+    
+    public void setHeuristicCoefficient(double coeff) {
+        if(coeff < 0 || coeff > 1.0)
+            return;
+        heuristicCoeff = coeff;
     }
 
     public void setSkipEdgeStrategy(SkipEdgeStrategy skipEdgeStrategy) {
@@ -73,17 +81,17 @@ public class ANDijkstra {
 
     public ShortestPathTree getShortestPathTree(State initialState, List<State> initialStates,
             boolean bikeParkings) {
-        Vertex target = null;
-        if (options.rctx != null) {
-            target = initialState.getOptions().rctx.target;
-        }
+//        Vertex target = null;
+//        if (options.rctx != null) {
+//            target = initialState.getOptions().rctx.target;
+//        }
         ShortestPathTree spt = new DominanceFunction.MinimumWeight().getNewShortestPathTree(options);
         BinHeap<State> queue = new BinHeap<State>(1000);
 
         if (initialStates != null)
             for (State s : initialStates) {
                 spt.add(s);
-                queue.insert(s, s.getWeight());
+                queue.insert(s, s.getWeight()*heuristicCoeff);
             }
         spt.add(initialState);
         queue.insert(initialState, initialState.getWeight());

@@ -54,6 +54,7 @@ public class BikePNRNodeModule implements GraphBuilderModule {
     private static final Logger LOG = LoggerFactory.getLogger(BikePNRNodeModule.class);
 
     private static final int STEP = 5;
+    private double heuristicCoeff = 1.0;
 
     public List<String> provides() {
         return Arrays.asList("bike pnr nodes");
@@ -61,6 +62,12 @@ public class BikePNRNodeModule implements GraphBuilderModule {
 
     public List<String> getPrerequisites() {
         return Arrays.asList("streets", "transit"); // transit yes or no?
+    }
+    
+    public void setHeuristicCoefficient(double coeff) {
+        if(coeff < 0 || coeff > 1.0)
+            return;
+        heuristicCoeff = coeff;
     }
 
     @Override
@@ -84,7 +91,7 @@ public class BikePNRNodeModule implements GraphBuilderModule {
         long avgDijkstra = 0;
         int counter = 0;
 
-        Map<Vertex, Map<Vertex, Double>> profiles = new HashMap<Vertex, Map<Vertex, Double>>();
+        Map<Vertex, Map<Vertex, Double>> profiles = new HashMap<Vertex, Map<Vertex, Double>>(stopsize);
         long time, time2;
         RoutingRequest options = new RoutingRequest();
         LOG.info("Size of Bike PNR candidate set is " + stopsize);
@@ -149,7 +156,7 @@ public class BikePNRNodeModule implements GraphBuilderModule {
                 Vertex v = s.getVertex();
                 if (v instanceof BikeParkVertex && !v.equals(ts)) {
                     if (!profiles.containsKey(v))
-                        profiles.put(v, new HashMap<Vertex, Double>());
+                        profiles.put(v, new HashMap<Vertex, Double>(stopsize));
                     profiles.get(v).put(ts, s.getWeight());
                 }
             }
@@ -177,13 +184,8 @@ public class BikePNRNodeModule implements GraphBuilderModule {
                     State s = new State(v, options);
                     StateEditor s1 = s.edit(null);
                     
-                    Map<Vertex, Double> m = profiles.get(ts);
-                    double d = m.get(v);
-                    s1.incrementWeight(d);
-                    
-                    m = profiles.get(v);
-                    d = m.get(ts);
-                    s1.incrementWeight(profiles.get(v).get(ts));
+                    s1.incrementWeight(profiles.get(ts).get(v)*heuristicCoeff);
+                    s1.incrementWeight(profiles.get(v).get(ts)*heuristicCoeff);
                     
                     states.add(s1.makeState());
                 }
@@ -210,8 +212,9 @@ public class BikePNRNodeModule implements GraphBuilderModule {
 
             for (State s : spt.getAllStates()) {
                 if (s.covered && s.getVertex() instanceof IntersectionVertex) {
-                    ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).bikePNRNodes
-                            .add(ts);
+                    IntersectionVertex iv = (IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.bikePNRNodes.contains(ts))
+                        iv.bikePNRNodes.add(ts);
                 }
             }
 

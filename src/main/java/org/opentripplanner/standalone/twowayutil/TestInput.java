@@ -147,16 +147,16 @@ public class TestInput {
         rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
         rq.returnDateTime = rq.dateTime;
         rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
-//        if (rq.rctx == null) {
-//            rq.setRoutingContext(graph);
-//            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
-//                    new NoThruTrafficPathParser() };
-//        }       
+        if (rq.rctx == null) {
+            rq.setRoutingContext(graph);
+            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                    new NoThruTrafficPathParser() };
+        }       
         rq.numItineraries = 2;
-//        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
-//        rq.longDistance = true;
-//        if (rq.maxWalkDistance == Double.MAX_VALUE) rq.maxWalkDistance = 2000;
-//        if (rq.maxWalkDistance > 15000) rq.maxWalkDistance = 15000;
-//        rq.maxTransfers = 4;
+        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+        rq.longDistance = true;
+        if (rq.maxWalkDistance == Double.MAX_VALUE) rq.maxWalkDistance = 2000;
+        if (rq.maxWalkDistance > 15000) rq.maxWalkDistance = 15000;
+        rq.maxTransfers = 4;
     }
 }

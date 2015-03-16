@@ -55,6 +55,7 @@ public class PNRNodeModule implements GraphBuilderModule {
     private static final Logger LOG = LoggerFactory.getLogger(PNRNodeModule.class);
 
     private static final int STEP = 5;
+    private double heuristicCoeff = 1.0;
 
     public List<String> provides() {
         return Arrays.asList("pnr nodes");
@@ -62,6 +63,12 @@ public class PNRNodeModule implements GraphBuilderModule {
 
     public List<String> getPrerequisites() {
         return Arrays.asList("streets", "transit"); // transit yes or no?
+    }
+    
+    public void setHeuristicCoefficient(double coeff) {
+        if(coeff < 0 || coeff > 1.0)
+            return;
+        heuristicCoeff = coeff;
     }
 
     @Override
@@ -178,8 +185,8 @@ public class PNRNodeModule implements GraphBuilderModule {
                 if (!v.equals(ts) && profiles.get(v).containsKey(ts) && profiles.containsKey(ts) && profiles.get(ts).containsKey(v)) {
                     State s = new State(v, options);
                     StateEditor s1 = s.edit(null);
-                    s1.incrementWeight(profiles.get(ts).get(v));
-                    s1.incrementWeight(profiles.get(v).get(ts));
+                    s1.incrementWeight(profiles.get(ts).get(v)*heuristicCoeff);
+                    s1.incrementWeight(profiles.get(v).get(ts)*heuristicCoeff);
                     states.add(s1.makeState());
                 }
             }
@@ -206,8 +213,9 @@ public class PNRNodeModule implements GraphBuilderModule {
 
             for (State s : spt.getAllStates()) {
                 if (s.covered && s.getVertex() instanceof IntersectionVertex) {
-                    ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).pnrNodes
-                            .add(ts);
+                    IntersectionVertex iv = (IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.pnrNodes.contains(ts))
+                        iv.pnrNodes.add(ts);
                 }
             }
 

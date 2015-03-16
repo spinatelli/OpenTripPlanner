@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class GraphBuilderParameters {
 
     public static double DEFAULT_SUBWAY_ACCESS_TIME = 2.0; // minutes
+    public static double DEFAULT_HEURISTIC_COEFFICIENT = 1.0;
 
     /**
      * Generates nice HTML report of Graph errors/warnings (annotations). They are stored in the same location as the graph.
@@ -85,6 +86,17 @@ public class GraphBuilderParameters {
     public final boolean computeAccessNodes;
 
     /**
+     * Coefficient for access node and PNR node computation. Upper bounds are multiplied by this
+     * to reduce set size
+     */
+    public final double heuristicCoefficient;
+
+    /**
+     * Coordinates of the city center, to compute street directions
+     */
+    public final String cityCenter;
+
+    /**
      * Set all parameters from the given Jackson JSON tree, applying defaults.
      * Supplying MissingNode.getInstance() will cause all the defaults to be applied.
      * This could be done automatically with the "reflective query scraper" but it's less type safe and less clear.
@@ -105,6 +117,8 @@ public class GraphBuilderParameters {
         fetchElevationUS = config.path("fetchElevationUS").asBoolean(false);
         staticBikeParkAndRide = config.path("staticBikeParkAndRide").asBoolean(false);
         computeAccessNodes = config.path("computeAccessNodes").asBoolean(false);
+        heuristicCoefficient = config.path("heuristicCoefficient").asDouble(DEFAULT_HEURISTIC_COEFFICIENT);
+        cityCenter = config.path("cityCenter").asText();
 
     }
 

@@ -311,22 +311,24 @@ public class GraphBuilder implements Runnable {
 
         // add a new graphbuilder that adds access nodes and PNR nodes for every street node
         if (builderParams.computeAccessNodes && hasOSM && hasGTFS) {
-            if (params.cityCenter != null) {
-                String[] coords = params.cityCenter.split(",");
+            if (builderParams.cityCenter != null && !builderParams.cityCenter.isEmpty()) {
+                String[] coords = builderParams.cityCenter.split(",");
                 if (coords.length == 2) {
                     double lat = Double.parseDouble(coords[0]), lon = Double.parseDouble(coords[1]);
                     GenericLocation center = new GenericLocation(lat, lon);
-                    // GraphBuilderModule streetDirectionBuilder = new
-                    // StreetDirectionModule(center);
-                    // graphBuilder.addGraphBuilder(streetDirectionBuilder);
+                    GraphBuilderModule streetDirectionBuilder = new StreetDirectionModule(center);
+                    graphBuilder.addGraphBuilder(streetDirectionBuilder);
                 }
             }
-            // GraphBuilderModule accessNodeBuilder = new AccessNodeModule();
-            // graphBuilder.addGraphBuilder(accessNodeBuilder);
-            // GraphBuilderModule pnrNodeBuilder = new PNRNodeModule();
-            // graphBuilder.addGraphBuilder(pnrNodeBuilder);
             GraphBuilderModule bikePNRNodeBuilder = new BikePNRNodeModule();
+            ((BikePNRNodeModule) bikePNRNodeBuilder).setHeuristicCoefficient(builderParams.heuristicCoefficient);
             graphBuilder.addGraphBuilder(bikePNRNodeBuilder);
+            GraphBuilderModule pnrNodeBuilder = new PNRNodeModule();
+            ((PNRNodeModule) pnrNodeBuilder).setHeuristicCoefficient(builderParams.heuristicCoefficient);
+            graphBuilder.addGraphBuilder(pnrNodeBuilder);
+            GraphBuilderModule accessNodeBuilder = new AccessNodeModule();
+            ((AccessNodeModule) accessNodeBuilder).setHeuristicCoefficient(builderParams.heuristicCoefficient);
+            graphBuilder.addGraphBuilder(accessNodeBuilder);
         }
 
         graphBuilder.serializeGraph = (!params.inMemory) || params.preFlight;

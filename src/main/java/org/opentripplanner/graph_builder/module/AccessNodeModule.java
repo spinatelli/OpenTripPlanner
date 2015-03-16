@@ -55,6 +55,7 @@ public class AccessNodeModule implements GraphBuilderModule {
     private static final Logger LOG = LoggerFactory.getLogger(AccessNodeModule.class);
 
     private static final int STEP = 1;
+    private double heuristicCoefficient = 1.0;
 
     private GenericLocation location;
 
@@ -64,6 +65,12 @@ public class AccessNodeModule implements GraphBuilderModule {
 
     public List<String> getPrerequisites() {
         return Arrays.asList("streets", "transit"); // transit yes or no?
+    }
+    
+    public void setHeuristicCoefficient(double coeff) {
+        if(coeff < 0 || coeff > 1.0)
+            return;
+        heuristicCoefficient = coeff;
     }
 
     @Override
@@ -197,6 +204,7 @@ public class AccessNodeModule implements GraphBuilderModule {
     private Collection<? extends State> forwardExploration(State initial, RoutingRequest opt,
             List<Vertex> vertices, List<State> states, boolean bikeParkings) {
         ANDijkstra mmdijkstra = new ANDijkstra(opt);
+        mmdijkstra.setHeuristicCoefficient(heuristicCoefficient);
         Set<Vertex> term = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
                 IntersectionVertex.class)));
         // TODO: are these two needed?
@@ -248,15 +256,19 @@ public class AccessNodeModule implements GraphBuilderModule {
             boolean car) {
         for (State s : anStates) {
             if (s.covered) {
-                if (s.getVertex() instanceof IntersectionVertex && car)
-                    ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
-                            .add(ts);
-                else if (s.getVertex() instanceof ParkAndRideVertex && car)
-                    ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
-                            .add(ts);
-                else if (s.getVertex() instanceof BikeParkVertex && !car)
-                    ((BikeParkVertex) (graph.getVertex(s.getVertex().getLabel()))).accessNodes
-                            .add(ts);
+                if (s.getVertex() instanceof IntersectionVertex && car) {
+                    IntersectionVertex iv = (IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.accessNodes.contains(ts))
+                        iv.accessNodes.add(ts);
+                } else if (s.getVertex() instanceof ParkAndRideVertex && car) {
+                    ParkAndRideVertex iv = (ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.accessNodes.contains(ts))
+                        iv.accessNodes.add(ts);
+                } else if (s.getVertex() instanceof BikeParkVertex && !car) {
+                    BikeParkVertex iv = (BikeParkVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.accessNodes.contains(ts))
+                        iv.accessNodes.add(ts);
+                }
             }
         }
     }
@@ -265,15 +277,19 @@ public class AccessNodeModule implements GraphBuilderModule {
             Vertex ts, boolean car) {
         for (State s : anStates) {
             if (s.covered) {
-                if (s.getVertex() instanceof IntersectionVertex && car)
-                    ((IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
-                            .add(ts);
-                else if (s.getVertex() instanceof ParkAndRideVertex && car)
-                    ((ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
-                            .add(ts);
-                else if (s.getVertex() instanceof BikeParkVertex && !car)
-                    ((BikeParkVertex) (graph.getVertex(s.getVertex().getLabel()))).backwardAccessNodes
-                            .add(ts);
+                if (s.getVertex() instanceof IntersectionVertex && car) {
+                    IntersectionVertex iv = (IntersectionVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.backwardAccessNodes.contains(ts))
+                        iv.backwardAccessNodes.add(ts);
+                } else if (s.getVertex() instanceof ParkAndRideVertex && car) {
+                    ParkAndRideVertex iv = (ParkAndRideVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.backwardAccessNodes.contains(ts))
+                        iv.backwardAccessNodes.add(ts);
+                } else if (s.getVertex() instanceof BikeParkVertex && !car) {
+                    BikeParkVertex iv = (BikeParkVertex) (graph.getVertex(s.getVertex().getLabel()));
+                    if (!iv.backwardAccessNodes.contains(ts))
+                        iv.backwardAccessNodes.add(ts);
+                }
             }
         }
     }

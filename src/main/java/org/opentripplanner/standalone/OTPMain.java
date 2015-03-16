@@ -33,6 +33,7 @@ import org.opentripplanner.routing.impl.MemoryGraphSource;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.spt.DominanceFunction;
 import org.opentripplanner.routing.spt.GraphPath;
+import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -95,7 +96,7 @@ public class OTPMain {
         }
         if (params.build == null && !params.visualize && !params.server
                 && params.scriptFile == null && !params.enableScriptingWebService
-                && !params.oneWayTest && !params.twoWayTest && !params.generateTestData) {
+                && !params.oneWayTest && !params.twoWayTest && !params.generateTestData && !params.anStats) {
             LOG.info("Nothing to do. Use --help to see available tasks.");
             System.exit(-1);
         }
@@ -258,9 +259,9 @@ public class OTPMain {
     }
 
     public void showANStats() {
-        Graph g = otpServer.getRouter("default").graph;
+        Graph g = otpServer.getRouter("").graph;
 
-        int counter = 0, an = 0, ban = 0, pnr = 0, ans = 0, bans = 0, pnrs = 0;
+        int counter = 0, an = 0, ban = 0, pnr = 0, bpnr = 0, ans = 0, bans = 0, pnrs = 0, bpnrs = 0;
         for (IntersectionVertex iv : Iterables.filter(g.getVertices(), IntersectionVertex.class)) {
             if (iv.accessNodes != null && iv.accessNodes.size() >= 0) {
                 an++;
@@ -273,6 +274,10 @@ public class OTPMain {
             if (iv.pnrNodes != null && iv.pnrNodes.size() >= 0) {
                 pnr++;
                 pnrs += iv.pnrNodes.size();
+            }
+            if (iv.bikePNRNodes != null && iv.bikePNRNodes.size() >= 0) {
+                bpnr++;
+                bpnrs += iv.bikePNRNodes.size();
             }
             counter++;
         }
@@ -287,6 +292,9 @@ public class OTPMain {
         LOG.info(pnr + " Intersection vertices out of " + counter + " have PNR nodes");
         LOG.info("Intersection vertices with PNR nodes have " + (pnrs / pnr)
                 + " PNR nodes on average");
+        LOG.info(bpnr + " Intersection vertices out of " + counter + " have bike PNR nodes");
+        LOG.info("Intersection vertices with bike PNR nodes have " + (bpnrs / bpnr)
+                + " bike PNR nodes on average");
 
         counter = an = ban = ans = bans = 0;
         for (ParkAndRideVertex iv : Iterables.filter(g.getVertices(), ParkAndRideVertex.class)) {
@@ -305,6 +313,25 @@ public class OTPMain {
         LOG.info("PNR Nodes with access nodes have " + (ans / an) + " access nodes on average");
         LOG.info(ban + " PNR Nodes out of " + counter + " have backward access nodes");
         LOG.info("PNR Nodes with backward access nodes have " + (bans / ban)
+                + " backward access nodes on average");
+
+        counter = an = ban = ans = bans = 0;
+        for (BikeParkVertex iv : Iterables.filter(g.getVertices(), BikeParkVertex.class)) {
+            if (iv.accessNodes != null && iv.accessNodes.size() >= 0) {
+                an++;
+                ans += iv.accessNodes.size();
+            }
+            if (iv.backwardAccessNodes != null && iv.backwardAccessNodes.size() >= 0) {
+                ban++;
+                bans += iv.backwardAccessNodes.size();
+            }
+            counter++;
+        }
+
+        LOG.info(an + " bike PNR Nodes out of " + counter + " have access nodes");
+        LOG.info("bike PNR Nodes with access nodes have " + (ans / an) + " access nodes on average");
+        LOG.info(ban + " bike PNR Nodes out of " + counter + " have backward access nodes");
+        LOG.info("bike PNR Nodes with backward access nodes have " + (bans / ban)
                 + " backward access nodes on average");
     }
 

@@ -101,18 +101,10 @@ public class CommandLineParameters implements Cloneable {
     @Parameter(names = {"--matchBusRoutesToStreets"},
             description = "Based on GTFS data, guess which OSM streets each bus runs on to improve stop linking.")
     public boolean matchBusRoutesToStreets = false;
-
-    @Parameter(names = {"--computeAccessNodes"},
-            description = "Precompute access nodes for road nodes.")
-    boolean computeAccessNodes;
     
     @Parameter(names = {"--printAccessNodes"},
             description = "Print computed access node stats")
     public boolean anStats = false;
-    
-    @Parameter(names = {"--cityCenter"},
-            description = "Coordinates representing the city center. Street directions are computed wrt this location.")
-    public String cityCenter = null;
     
     @Parameter(names = {"--twoWayTest"},
             description = "Perform 2-way PNR routing tests")
