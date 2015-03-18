@@ -48,8 +48,12 @@ public class ANDijkstra {
     public TraverseVisitor traverseVisitor;
 
     private boolean verbose = false;
-    
+
     private double heuristicCoeff = 1.0;
+
+    private static final int MAX_DIVISOR = 4;
+
+    private static final int MIN_DIVISOR = 1;
 
     private RemainingWeightHeuristic heuristic = new TrivialRemainingWeightHeuristic();
 
@@ -60,9 +64,9 @@ public class ANDijkstra {
     public void setSearchTerminationStrategy(SearchTerminationStrategy searchTerminationStrategy) {
         this.searchTerminationStrategy = searchTerminationStrategy;
     }
-    
+
     public void setHeuristicCoefficient(double coeff) {
-        if(coeff < 0 || coeff > 1.0)
+        if (coeff > 1.0)
             return;
         heuristicCoeff = coeff;
     }
@@ -79,20 +83,40 @@ public class ANDijkstra {
         return getShortestPathTree(initialState, null, false);
     }
 
+    private double computeDelayCoefficient(double min, double max, double weight) {
+        return (MAX_DIVISOR - MIN_DIVISOR) * (weight - min) / (max - min) + MIN_DIVISOR;
+    }
+
     public ShortestPathTree getShortestPathTree(State initialState, List<State> initialStates,
             boolean bikeParkings) {
-//        Vertex target = null;
-//        if (options.rctx != null) {
-//            target = initialState.getOptions().rctx.target;
-//        }
-        ShortestPathTree spt = new DominanceFunction.MinimumWeight().getNewShortestPathTree(options);
+        ShortestPathTree spt = new DominanceFunction.MinimumWeight()
+                .getNewShortestPathTree(options);
         BinHeap<State> queue = new BinHeap<State>(1000);
 
-        if (initialStates != null)
+        if (initialStates != null) {
+            double min = Double.MAX_VALUE, max = Double.MIN_VALUE;
+            double w = 0;
+            for (State s : initialStates) {
+                w = s.getWeight();
+                if (w > max)
+                    max = w;
+                if (w < min)
+                    min = w;
+            }
+
             for (State s : initialStates) {
                 spt.add(s);
-                queue.insert(s, s.getWeight()*heuristicCoeff);
+                w = s.getWeight();
+                double d;
+                if (heuristicCoeff < 0) {
+                    d = computeDelayCoefficient(min, max, w);
+                    d *= d;
+                } else {
+                    d = heuristicCoeff;
+                }
+                queue.insert(s, w * d);
             }
+        }
         spt.add(initialState);
         queue.insert(initialState, initialState.getWeight());
 

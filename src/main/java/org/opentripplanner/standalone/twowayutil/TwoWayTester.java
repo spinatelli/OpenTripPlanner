@@ -2,11 +2,15 @@ package org.opentripplanner.standalone.twowayutil;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.TimeZone;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.api.model.TripPlan;
@@ -35,6 +39,7 @@ import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.standalone.OTPServer;
 import org.opentripplanner.standalone.Router;
+import org.opentripplanner.util.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,8 +64,13 @@ public class TwoWayTester {
 
     OTPServer server = null;
 
+    Random rand;
+    DateFormat dateFormat;
+
     public TwoWayTester(OTPServer server) {
         this.server = server;
+        rand = new Random();
+        dateFormat = new SimpleDateFormat("h:mma");
     }
 
     public void clearStats() {
@@ -102,11 +112,9 @@ public class TwoWayTester {
                 long time, time2, t;
                 LOG.info("Planning " + i);
                 time = System.currentTimeMillis();
-                List<GraphPath> paths;// = find(router, rq);
-                // why doesn't this work
-                paths = gpFinder.getPaths(rq);
+                List<GraphPath> paths = find(router, rq);
                 if (paths.isEmpty())
-                    LOG.info("WTF");
+                    continue;
                 TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
                 time2 = System.currentTimeMillis();
                 t = time2 - time;
@@ -264,36 +272,65 @@ public class TwoWayTester {
         clearStats();
     }
 
-    public void generateTestData(BBox srcBox, BBox tgtBox, File testOutput, int number) {
+    public void generateTestData(TestGenerationParameters params, TimeZone tz) {
         LOG.info("Generating test data");
         Random r = new Random();
         List<TestInput> list = new ArrayList<TestInput>();
-        // double minLat = 45.46, minLon = 9.18, maxLat = 45.56, maxLon = 9.29;
-        for (int i = 0; i < number; i++) {
-            TestInput t = new TestInput();
-            GenericLocation f = generateLocation(r, srcBox);
-            t.setFromLat(f.lat);
-            t.setFromLon(f.lng);
-            f = generateLocation(r, tgtBox);
-            t.setToLat(f.lat);
-            t.setToLon(f.lng);
-            t.setArrivalTime("9:09am");
-            t.setDepartureTime("3:09pm");
+        
+        for (int i = 0; i < params.experimentsNumber; i++) {
+            TestInput t = new TestInput(i);
+            
+            t.setFrom(generateLocation(r, params.bboxSrc, params.bboxSrcExcept));
+            t.setTo(generateLocation(r, params.bboxTgt));
+            
+            long time = generateTime(t.getArrivalDate(), params.arrFromTime, params.arrToTime, tz);
+            t.setArrivalTime(dateFormat.format(new Date(time)));
+            
+//          t.setDepartureTime(dateFormat.format(new Date(time+6*60*60*1000)));
+            time = generateTime(t.getArrivalDate(), params.arrFromTime, params.arrToTime, tz);
+            t.setDepartureTime(dateFormat.format(new Date(time)));
+            
+            int car = rand.nextInt(2);
+            if (car == 1)
+                t.setInitialMode("CAR");
+            else
+                t.setInitialMode("BICYCLE");
+            
             list.add(t);
+            LOG.info("Generated "+i);
         }
+        
         TwoWayCsvTestReader csv = new TwoWayCsvTestReader();
         try {
-            LOG.info("Output file: " + testOutput.getAbsolutePath());
-            csv.toFile(testOutput, list);
+            LOG.info("Output file: " + params.outputFile.getAbsolutePath());
+            csv.toFile(params.outputFile, list);
         } catch (IOException e) {
             e.printStackTrace();
         }
         LOG.info("Done generating");
     }
+    
+    private long generateTime(String date, String from, String to, TimeZone tz) {
+        Date fromDT = DateUtils.toDate(date, from, tz);
+        Date toDT = DateUtils.toDate(date, to, tz);
+        int deltaMinutes = (int)((toDT.getTime() / 1000)-(fromDT.getTime() / 1000));
+        int randomMinutes = rand.nextInt(deltaMinutes + 1);
+        return fromDT.getTime()+randomMinutes*60*1000;
+    }
 
-    private static GenericLocation generateLocation(Random r, BBox bbox) {
-        double lat = bbox.minLat + (bbox.maxLat - bbox.minLat) * r.nextDouble();
-        double lon = bbox.minLon + (bbox.maxLon - bbox.minLon) * r.nextDouble();
+    private GenericLocation generateLocation(Random r, BBox bbox) {
+        return generateLocation(r, bbox, null);
+    }
+    
+    private GenericLocation generateLocation(Random r, BBox bbox, BBox except) {
+        double lat;
+        do {
+            lat = bbox.minLat + (bbox.maxLat - bbox.minLat) * r.nextDouble();
+        } while (except != null && lat < except.maxLat && lat > except.minLat);
+        double lon;
+        do {
+            lon = bbox.minLon + (bbox.maxLon - bbox.minLon) * r.nextDouble();
+        } while (except != null && lon < except.maxLat && lon > except.minLat);
         return new GenericLocation(lat, lon);
     }
 

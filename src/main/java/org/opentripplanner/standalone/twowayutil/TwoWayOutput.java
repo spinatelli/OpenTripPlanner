@@ -40,12 +40,6 @@ public class TwoWayOutput {
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double fromLon;
 
-    @CsvField()
-    private String arrivalDate;
-
-    @CsvField()
-    private String arrivalTime;
-
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double toLat;
 
@@ -53,10 +47,19 @@ public class TwoWayOutput {
     private double toLon;
 
     @CsvField()
+    private String arrivalDate;
+
+    @CsvField()
+    private String arrivalTime;
+
+    @CsvField()
     private String departureDate;
 
     @CsvField()
     private String departureTime;
+
+    @CsvField()
+    private String initialMode;
 
     //routing time
     @CsvField()
@@ -73,7 +76,6 @@ public class TwoWayOutput {
     private double parkingLon;
 
     public TwoWayOutput() {
-        
     }
     
     public TwoWayOutput(TestInput info, int t) {
@@ -86,6 +88,7 @@ public class TwoWayOutput {
         setArrivalTime(info.getArrivalTime());
         setDepartureDate(info.getDepartureDate());
         setArrivalDate(info.getArrivalDate());
+        setInitialMode(info.getInitialMode());
         setTime(t);
     }
 
@@ -197,6 +200,14 @@ public class TwoWayOutput {
         this.toLon = toLon;
     }
 
+    public String getInitialMode() {
+        return initialMode;
+    }
+    
+    public void setInitialMode(String initialMode) {
+        this.initialMode = initialMode;
+    }
+
     public void generateRequest(RoutingRequest rq, Graph graph) {
         rq.routerId = "default";
         rq.from = new GenericLocation(getFromLat(), getFromLon());
@@ -206,8 +217,11 @@ public class TwoWayOutput {
         rq.showIntermediateStops = false;
         rq.clampInitialWait = -1;
         rq.setArriveBy(true);
-        rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
-        rq.parkAndRide = true;
+        rq.modes = new TraverseModeSet("WALK,TRANSIT,"+getInitialMode());
+        if (getInitialMode().equals("BIKE"))
+            rq.bikeParkAndRide = true;
+        else
+            rq.parkAndRide = true;
         rq.twoway = false;
         rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
         rq.returnDateTime = rq.dateTime;

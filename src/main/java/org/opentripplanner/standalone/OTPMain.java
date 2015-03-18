@@ -16,23 +16,14 @@ package org.opentripplanner.standalone;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.List;
-import java.util.Locale;
 
 import org.opentripplanner.graph_builder.GraphBuilder;
-import org.opentripplanner.routing.algorithm.Algorithm;
-import org.opentripplanner.routing.algorithm.PNRDijkstra;
-import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
-import org.opentripplanner.routing.impl.GraphPathFinder;
 import org.opentripplanner.routing.impl.GraphScanner;
 import org.opentripplanner.routing.impl.InputStreamGraphSource;
 import org.opentripplanner.routing.impl.MemoryGraphSource;
 import org.opentripplanner.routing.services.GraphService;
-import org.opentripplanner.routing.spt.DominanceFunction;
-import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.vertextype.BikeParkVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
@@ -40,6 +31,7 @@ import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.scripting.impl.BSFOTPScript;
 import org.opentripplanner.scripting.impl.OTPScript;
 import org.opentripplanner.standalone.twowayutil.BBox;
+import org.opentripplanner.standalone.twowayutil.TestGenerationParameters;
 import org.opentripplanner.standalone.twowayutil.TwoWayTester;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
@@ -247,8 +239,9 @@ public class OTPMain {
 
         if (params.generateTestData) {
             TwoWayTester tester = new TwoWayTester(otpServer);
-            tester.generateTestData(new BBox(params.bboxSrc), new BBox(params.bboxTgt),
-                    params.testOutput, 3);
+            JsonNode generationConfig = OTPMain.loadJson(new File(params.graphDirectory, "generator.json"));
+            TestGenerationParameters generationParams = new TestGenerationParameters(generationConfig);
+            tester.generateTestData(generationParams, otpServer.getRouter("default").graph.getTimeZone());
             System.exit(0);
         }
 

@@ -7,6 +7,7 @@ public class BBox {
     public double maxLon = 180;
     
     public BBox(String s) {
+        if (s == null || s.isEmpty()) return;
         String[] parts = s.split(",");
         minLon = Double.parseDouble(parts[0]);
         minLat = Double.parseDouble(parts[1]);

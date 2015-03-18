@@ -68,7 +68,7 @@ public class AccessNodeModule implements GraphBuilderModule {
     }
     
     public void setHeuristicCoefficient(double coeff) {
-        if(coeff < 0 || coeff > 1.0)
+        if(coeff > 1.0)
             return;
         heuristicCoefficient = coeff;
     }
@@ -88,6 +88,7 @@ public class AccessNodeModule implements GraphBuilderModule {
 
         computeAccessNodes(graph, vertices, stops, false);
         computeAccessNodes(graph, vertices, stops, true);
+        
         printIntersectionStats(vertices);
         printPNRStats(vertices);
         printBikePNRStats(vertices);

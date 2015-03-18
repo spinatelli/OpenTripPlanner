@@ -90,9 +90,7 @@ public class PNRDijkstra implements Algorithm {
 
         public Vertex u_vertex;
 
-        Double foundPathWeightIn = Double.MAX_VALUE;
-
-        Double foundPathWeightOut = Double.MAX_VALUE;
+        Double foundPathWeight = Double.MAX_VALUE;
 
         public Vertex currentPNR = null;
 
@@ -105,6 +103,10 @@ public class PNRDijkstra implements Algorithm {
         public Set<Vertex> sourcePNRBwdAccessNodes;
 
         public TraverseMode initialMode;
+
+        public double minWeightIn = Double.MIN_VALUE;
+
+        public double minWeightOut = Double.MIN_VALUE;
 
         public RunState(RoutingRequest options) {
             initialMode = options.modes.getBicycle() ? TraverseMode.BICYCLE : TraverseMode.CAR;
@@ -416,7 +418,7 @@ public class PNRDijkstra implements Algorithm {
 
             double key;
             RoutingRequest options;
-            Double foundPathWeight;
+            Double maxWeight;
             BinHeap<State> queue;
             Map<Vertex, State> milestoneSet;
             boolean queueIn = runState.pqOut.empty() || !runState.pqIn.empty()
@@ -424,18 +426,18 @@ public class PNRDijkstra implements Algorithm {
             if (queueIn) {
                 key = runState.pqIn.peek_min_key();
                 options = runState.optionsIn;
-                foundPathWeight = runState.foundPathWeightIn;
+                maxWeight = runState.foundPathWeight-runState.minWeightOut;
                 queue = runState.pqIn;
                 milestoneSet = runState.milestoneIn;
             } else {
                 key = runState.pqOut.peek_min_key();
                 options = runState.optionsOut;
-                foundPathWeight = runState.foundPathWeightOut;
+                maxWeight = runState.foundPathWeight-runState.minWeightIn;
                 queue = runState.pqOut;
                 milestoneSet = runState.milestoneOut;
             }
 
-            if (key >= foundPathWeight)
+            if (key >= maxWeight)
                 break;
 
             if (!iterate(queueIn)) {
@@ -443,7 +445,7 @@ public class PNRDijkstra implements Algorithm {
                     addAllFromMilestoneSet(queue, milestoneSet);
                 continue;
             }
-            
+
             // TODO: rctx.target has to be set depending on search direction
             if (runState.u_vertex == runState.sourceVertex && runState.u.pnrNode != null
                     && runState.u.getPNRStatus().isFinal()) {
@@ -453,23 +455,24 @@ public class PNRDijkstra implements Algorithm {
                     if (!runState.pnrOut.containsKey(runState.u.pnrNode)) {
                         // set as used
                         runState.pnrOut.put(runState.u.pnrNode, runState.u);
+                        double w = runState.u.getWeight();
+                        if (w < runState.minWeightOut)
+                            runState.minWeightOut = w;
+
                         // it has been settled by the other search too
                         if (runState.pnrIn.containsKey(runState.u.pnrNode)) {
                             // new solution for u.pnrNode
 
-                            // TODO: sum of weights? or rather make the difference between dep/arr
                             // long newWeight = (runState.optionsOut.dateTime -
                             // runState.u.getTimeSeconds())+(runState.pnrIn.get(runState.u.pnrNode).getTimeSeconds()-runState.optionsIn.dateTime);
-                            double newWeight = runState.u.getWeight()
+                            double newWeight = w
                                     + runState.pnrIn.get(runState.u.pnrNode).getWeight();
-                            // LOG.error("WTF " + runState.u.getPNRStatus().toString() + " "
-                            // + newWeight);
-                            if (newWeight >= runState.foundPathWeightOut) {
+                            if (newWeight >= runState.foundPathWeight) {
                                 options.rctx.debugOutput.foundPath();
                                 // LOG.warn("Found path");
                                 break;
                             }
-                            runState.foundPathWeightOut = newWeight;
+                            runState.foundPathWeight = newWeight;
                             runState.currentPNR = runState.u.pnrNode;
                         }
                     }
@@ -478,31 +481,28 @@ public class PNRDijkstra implements Algorithm {
                     if (!runState.pnrIn.containsKey(runState.u.pnrNode)) {
                         // set as used
                         runState.pnrIn.put(runState.u.pnrNode, runState.u);
+                        double w = runState.u.getWeight();
+                        if (w < runState.minWeightIn)
+                            runState.minWeightIn = w;
                         // it has been settled by the other search too
                         if (runState.pnrOut.containsKey(runState.u.pnrNode)) {
                             // new solution for u.pnrNode
 
-                            // TODO: sum of weights? or rather make the difference between dep/arr
                             // long newWeight = (runState.optionsOut.dateTime -
                             // runState.u.getTimeSeconds())+(runState.pnrIn.get(runState.u.pnrNode).getTimeSeconds()-runState.optionsIn.dateTime);
-                            double newWeight = runState.u.getWeight()
+                            double newWeight = w
                                     + runState.pnrOut.get(runState.u.pnrNode).getWeight();
-                            // LOG.error("WTF "+runState.u.getPNRStatus().toString()
-                            // +" "+newWeight);
-                            if (newWeight >= runState.foundPathWeightIn) {
+                            if (newWeight >= runState.foundPathWeight) {
                                 options.rctx.debugOutput.foundPath();
-                                // LOG.warn("Found path");
                                 break;
                             }
-                            runState.foundPathWeightIn = newWeight;
+                            runState.foundPathWeight = newWeight;
                             runState.currentPNR = runState.u.pnrNode;
                         }
                     }
                 }
             }
 
-            if (queue.size() < 5 && queue.size()>0)
-                LOG.debug("last");
             if (queue.empty())
                 addAllFromMilestoneSet(queue, milestoneSet);
 
