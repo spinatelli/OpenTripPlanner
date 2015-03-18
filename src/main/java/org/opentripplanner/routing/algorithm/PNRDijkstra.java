@@ -462,18 +462,17 @@ public class PNRDijkstra implements Algorithm {
                         // it has been settled by the other search too
                         if (runState.pnrIn.containsKey(runState.u.pnrNode)) {
                             // new solution for u.pnrNode
-
-                            // long newWeight = (runState.optionsOut.dateTime -
-                            // runState.u.getTimeSeconds())+(runState.pnrIn.get(runState.u.pnrNode).getTimeSeconds()-runState.optionsIn.dateTime);
                             double newWeight = w
                                     + runState.pnrIn.get(runState.u.pnrNode).getWeight();
-                            if (newWeight >= runState.foundPathWeight) {
+                            double modWeight = w + runState.minWeightIn;
+                            if (modWeight >= runState.foundPathWeight) {
                                 options.rctx.debugOutput.foundPath();
-                                // LOG.warn("Found path");
                                 break;
                             }
-                            runState.foundPathWeight = newWeight;
-                            runState.currentPNR = runState.u.pnrNode;
+                            if(newWeight < runState.foundPathWeight) {
+                                runState.foundPathWeight = newWeight;
+                                runState.currentPNR = runState.u.pnrNode;
+                            }
                         }
                     }
                 } else {
@@ -487,17 +486,17 @@ public class PNRDijkstra implements Algorithm {
                         // it has been settled by the other search too
                         if (runState.pnrOut.containsKey(runState.u.pnrNode)) {
                             // new solution for u.pnrNode
-
-                            // long newWeight = (runState.optionsOut.dateTime -
-                            // runState.u.getTimeSeconds())+(runState.pnrIn.get(runState.u.pnrNode).getTimeSeconds()-runState.optionsIn.dateTime);
                             double newWeight = w
                                     + runState.pnrOut.get(runState.u.pnrNode).getWeight();
-                            if (newWeight >= runState.foundPathWeight) {
+                            double modWeight = w + runState.minWeightOut;
+                          if (modWeight >= runState.foundPathWeight) {
                                 options.rctx.debugOutput.foundPath();
                                 break;
                             }
-                            runState.foundPathWeight = newWeight;
-                            runState.currentPNR = runState.u.pnrNode;
+                            if(newWeight < runState.foundPathWeight) {
+                                runState.foundPathWeight = newWeight;
+                                runState.currentPNR = runState.u.pnrNode;
+                            }
                         }
                     }
                 }
