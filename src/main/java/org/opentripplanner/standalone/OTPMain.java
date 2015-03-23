@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
+import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.graph_builder.GraphBuilder;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
@@ -30,7 +31,6 @@ import org.opentripplanner.routing.vertextype.ParkAndRideVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.scripting.impl.BSFOTPScript;
 import org.opentripplanner.scripting.impl.OTPScript;
-import org.opentripplanner.standalone.twowayutil.BBox;
 import org.opentripplanner.standalone.twowayutil.TestGenerationParameters;
 import org.opentripplanner.standalone.twowayutil.TwoWayTester;
 import org.opentripplanner.visualizer.GraphVisualizer;
@@ -81,6 +81,13 @@ public class OTPMain {
                 jc.usage();
                 System.exit(0);
             }
+
+            if (params.version) {
+                MavenVersion version = MavenVersion.VERSION;
+                System.out.println(version.getVersion());
+                System.exit(0);
+            }
+
             params.infer();
         } catch (ParameterException pex) {
             LOG.error("Parameter error: {}", pex.getMessage());

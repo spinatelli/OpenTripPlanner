@@ -4,6 +4,8 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 
+import java.io.Serializable;
+
 /**
  * A class that determines when one search branch prunes another at the same Vertex, and ultimately which solutions
  * are retained. In the general case, one branch does not necessarily win out over the other, i.e. multiple states can
@@ -14,8 +16,12 @@ import org.opentripplanner.routing.edgetype.StreetEdge;
  * states at the same vertex. These need the graph to be "replicated" into separate layers, which is achieved by 
  * applying the main dominance logic (lowest weight, lowest cost, Pareto) conditionally, only when the two states
  * have identical bike/car/turn direction status.
+ * 
+ * Dominance functions are serializable so that routing requests may passed between machines in different JVMs, for instance
+ * in OTPA Cluster.
  */
-public abstract class DominanceFunction {
+public abstract class DominanceFunction implements Serializable {
+    private static final long serialVersionUID = 1;
 
     /** 
      * Return true if the first state "defeats" the second state or at least ties with it in terms of suitability. 
@@ -41,7 +47,12 @@ public abstract class DominanceFunction {
         if (a.isCarParked() != b.isCarParked()) {
             return false;
         }
-        
+
+        // Does one state represent riding a bike and the other represent walking after the bike was parked?
+        if (a.isBikeParked() != b.isBikeParked()) {
+            return false;
+        }
+
         // Are the two states arriving at a vertex from two different directions where turn restrictions apply?
         if (a.backEdge != b.getBackEdge() && (a.backEdge instanceof StreetEdge)) {
             if (! a.getOptions().getRoutingContext().graph.getTurnRestrictions(a.backEdge).isEmpty()) {
@@ -81,33 +92,18 @@ public abstract class DominanceFunction {
     /** In this implementation the relation is not symmetric. There are sets of mutually co-dominant states. */
     public static class Pareto extends DominanceFunction {
 
-        private static final double WALK_DIST_EPSILON = 0.05;
-        private static final double WEIGHT_EPSILON = 0.02;
-        private static final int WEIGHT_DIFF_MARGIN = 30;
-        private static final double TIME_EPSILON = 0.02;
-        private static final int TIME_DIFF_MARGIN = 30;
-
         @Override
         public boolean betterOrEqual (State a, State b) {
 
             // The key problem in pareto-dominance in OTP is that the elements of the state vector are not orthogonal.
             // When walk distance increases, weight increases. When time increases weight increases.
             // It's easy to get big groups of very similar states that don't represent significantly different outcomes.
-            // So this probably all deserves to be rethought.
+            // Our solution to this is to give existing states some slack to dominate new states more easily.
             
-            boolean walkDistanceIsHopeful = a.walkDistance / b.getWalkDistance() < 1+WALK_DIST_EPSILON;
-
-            double weightRatio = a.weight / b.weight;
-            boolean weightIsHopeful = (weightRatio < 1+WEIGHT_EPSILON && a.weight - b.weight < WEIGHT_DIFF_MARGIN);
-
-            double t1 = (double)a.getElapsedTimeSeconds();
-            double t2 = (double)b.getElapsedTimeSeconds();
-            double timeRatio = t1/t2;
-            boolean timeIsHopeful = (timeRatio < 1+TIME_EPSILON) && (t1 - t2 <= TIME_DIFF_MARGIN);
-
-            // only dominate if everything is at least hopeful
-            return walkDistanceIsHopeful && weightIsHopeful && timeIsHopeful;
-
+            final double EPSILON = 1e-4;
+            return (a.getElapsedTimeSeconds() <= (b.getElapsedTimeSeconds() + EPSILON)
+                    && a.getWeight() <= (b.getWeight() + EPSILON));
+            
         }
 
     }

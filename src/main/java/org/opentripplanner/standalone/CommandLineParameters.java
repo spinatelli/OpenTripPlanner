@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import jersey.repackaged.com.google.common.collect.Lists;
@@ -69,38 +67,6 @@ public class CommandLineParameters implements Cloneable {
     @Parameter(names = {"--preFlight"},
             description = "Pass the graph to the server in-memory after building it, and saving to disk.")
     public boolean preFlight;
-
-    @Parameter(names = {"--noTransit"},
-            description = "Skip all transit input files (GTFS).")
-    public boolean noTransit;
-
-    @Parameter(names = {"--useTransfersTxt"},
-            description = "Create direct transfer edges from transfers.txt in GTFS, instead of based on distance.")
-    public boolean useTransfersTxt;
-
-    @Parameter(names = {"--noParentStopLinking"},
-            description = "Skip linking of stops to parent stops (GTFS).")
-    public boolean noParentStopLinking;
-
-    @Parameter(names = {"--parentStationTransfers"},
-            description = "Create direct transfers between the constituent stops of each parent station.")
-    public boolean parentStationTransfers = false;
-
-    @Parameter(names = {"--noStreets"},
-            description = "Skip all street input files (OSM/PBF).")
-    public boolean noStreets;
-
-    @Parameter(names = {"--noEmbedConfig"},
-            description = "Skip embedding config in graph (Embed.properties).")
-    public boolean noEmbedConfig = false;
-
-    @Parameter(names = {"--skipVisibility"},
-            description = "Skip area visibility calculations, which are often time consuming.")
-    public boolean skipVisibility;
-
-    @Parameter(names = {"--matchBusRoutesToStreets"},
-            description = "Based on GTFS data, guess which OSM streets each bus runs on to improve stop linking.")
-    public boolean matchBusRoutesToStreets = false;
     
     @Parameter(names = {"--printAccessNodes"},
             description = "Print computed access node stats")
@@ -137,6 +103,10 @@ public class CommandLineParameters implements Cloneable {
     @Parameter(names = {"--bboxTgt"},
             description = "Target location bounding box")
     public String bboxTgt = "";
+    
+    @Parameter(names = { "--version", },
+            description = "Print the version, and then exit.")
+    public boolean version = false;
 
     /* Options for the server sub-task. */
 
