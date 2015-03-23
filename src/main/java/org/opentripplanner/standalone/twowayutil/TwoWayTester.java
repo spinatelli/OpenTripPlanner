@@ -5,46 +5,28 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.TimeZone;
 
-import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.api.model.TripPlan;
 import org.opentripplanner.api.resource.GraphPathToTripPlanConverter;
 import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.AStar;
 import org.opentripplanner.routing.algorithm.Algorithm;
 import org.opentripplanner.routing.algorithm.PNRDijkstra;
-import org.opentripplanner.routing.algorithm.strategies.EuclideanRemainingWeightHeuristic;
-import org.opentripplanner.routing.algorithm.strategies.InterleavedBidirectionalHeuristic;
-import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
-import org.opentripplanner.routing.algorithm.strategies.TrivialRemainingWeightHeuristic;
 import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.routing.impl.GraphPathFinder;
-import org.opentripplanner.routing.impl.PathWeightComparator;
-import org.opentripplanner.routing.impl.GraphPathFinder.Parser;
-import org.opentripplanner.routing.pathparser.BasicPathParser;
-import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
-import org.opentripplanner.routing.pathparser.PathParser;
-import org.opentripplanner.routing.spt.DominanceFunction;
 import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.standalone.OTPServer;
 import org.opentripplanner.standalone.Router;
 import org.opentripplanner.util.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 public class TwoWayTester {
 
@@ -65,6 +47,7 @@ public class TwoWayTester {
     OTPServer server = null;
 
     Random rand;
+
     DateFormat dateFormat;
 
     public TwoWayTester(OTPServer server) {
@@ -102,22 +85,23 @@ public class TwoWayTester {
         GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent
                                                                 // router-scoped GraphPathFinder but
                                                                 // there's no setup cost here
-        for(TestInput info: infos) {
-//        TestInput info = infos.get(0);
+        for (TestInput info : infos) {
+            // TestInput info = infos.get(0);
             LOG.info("Routing " + info);
             RoutingRequest rq = router.defaultRoutingRequest.clone();
-    
+
             info.generateRequest(rq, router.graph);
             try {
-                long time, time2, t;
+                long time, t;
                 LOG.info("Planning " + i);
                 time = System.currentTimeMillis();
-                List<GraphPath> paths = find(router, rq);
-                if (paths.isEmpty())
+                List<GraphPath> paths = findTwoWay(router, rq);
+                if (paths.isEmpty()) {
+                    skipped++;
                     continue;
+                }
                 TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
-                time2 = System.currentTimeMillis();
-                t = time2 - time;
+                t = System.currentTimeMillis() - time;
                 LOG.info("Took " + t + " millis");
                 newTime(t);
                 TwoWayOutput out = new TwoWayOutput(info, (int) t);
@@ -126,15 +110,14 @@ public class TwoWayTester {
                     t = plan.itinerary.get(0).duration + plan.itinerary.get(1).duration;
                     avgDuration += t;
                     if (plan.itinerary.get(0).pnrNode != null) {
-                        LOG.info(plan.itinerary.get(0).pnrNode.toString());
                         out.setParkingLat(plan.itinerary.get(0).pnrNode.y);
                         out.setParkingLon(plan.itinerary.get(0).pnrNode.x);
                     }
+                    out.setDuration((int) t);
+                    LOG.info("Iteration " + i + " time " + t);
+                    outputs.add(out);
+                    i++;
                 }
-                out.setDuration((int) t);
-                LOG.info("Iteration " + i + " time " + t);
-                outputs.add(out);
-                i++;
             } catch (PathNotFoundException e) {
                 LOG.error("Path not found");
                 skipped++;
@@ -151,11 +134,15 @@ public class TwoWayTester {
         printStats();
         clearStats();
     }
-    
-    public List<GraphPath> find(Router router, RoutingRequest options) {
 
-      Algorithm d = new PNRDijkstra();
-      return d.getShortestPathTree(options).getPaths();
+    public List<GraphPath> findTwoWay(Router router, RoutingRequest options) {
+        Algorithm d = new PNRDijkstra();
+        return d.getShortestPathTree(options).getPaths();
+    }
+
+    public List<GraphPath> findOneWay(Router router, RoutingRequest options) {
+        Algorithm d = new AStar();
+        return d.getShortestPathTree(options).getPaths();
     }
 
     public void oneWayTest(File testInput, File testOutput) {
@@ -172,29 +159,31 @@ public class TwoWayTester {
         LOG.info("Starting tests");
         List<OneWayOutput> outputs = new ArrayList<OneWayOutput>();
         Router router = server.getRouter("default");
-        GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent
-                                                                // router-scoped GraphPathFinder but
-                                                                // there's no setup cost here
 
         for (TwoWayOutput info : infos) {
             LOG.info("Routing " + info);
             RoutingRequest rq = router.defaultRoutingRequest.clone();
-            info.generateRequest(rq, router.graph);
+            info.generateRequest(rq, router.graph, true);
             LOG.info("Planning " + i);
 
             try {
-                long dur = 0, time, rtime, t = 0;
+                long time, t = 0, timeOw=0, dur=0;
 
                 time = System.currentTimeMillis();
-                List<GraphPath> paths = gpFinder.graphPathFinderEntryPoint(rq);
+                List<GraphPath> paths = findOneWay(router, rq);
+                if (paths.isEmpty()) {
+                    skipped++;
+                    continue;
+                }
                 TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
-                rtime = System.currentTimeMillis() - time;
-
+                t = System.currentTimeMillis() - time;
+                LOG.info("Took " + t + " millis");
+                timeOw = t;
                 OneWayOutput out = new OneWayOutput(info);
+                t = -1;
 
                 if (plan != null) {
                     dur = plan.itinerary.get(0).duration;
-                    avgDuration += dur;
                     if (plan.itinerary.get(0).pnrNode != null) {
                         out.setOwFirstParkingLat(plan.itinerary.get(0).pnrNode.y);
                         out.setOwFirstParkingLon(plan.itinerary.get(0).pnrNode.x);
@@ -202,59 +191,32 @@ public class TwoWayTester {
                 }
 
                 // from destination to parking
-                GenericLocation l = rq.from;
-                rq.from = rq.to;
-                rq.to = new GenericLocation(out.getOwFirstParkingLat(), out.getOwFirstParkingLon());
-                rq.dateTime = rq.returnDateTime;
-                rq.setArriveBy(false);
-                rq.parkAndRide = false;
-                rq.setMode(TraverseMode.CAR);
+                rq = router.defaultRoutingRequest.clone();
+                info.generateRequest(rq, router.graph, false);
 
                 time = System.currentTimeMillis();
-                paths = gpFinder.graphPathFinderEntryPoint(rq);
-                plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
-                rtime += System.currentTimeMillis() - time;
-
-                if (plan != null) {
-                    t = plan.itinerary.get(0).duration;
-                    dur += t;
-                    avgDuration += t;
-                    if (plan.itinerary.get(0).pnrNode != null) {
-                        LOG.info(plan.itinerary.get(0).pnrNode.toString());
-                        out.setOwSecondParkingLat(plan.itinerary.get(0).pnrNode.y);
-                        out.setOwSecondParkingLon(plan.itinerary.get(0).pnrNode.x);
-                    }
+                paths = findOneWay(router, rq);
+                if (paths.isEmpty()) {
+                    skipped++;
+                    continue;
                 }
-
-                // from parking to source
-                rq.from = rq.to;
-                rq.to = l;
-                rq.dateTime = rq.dateTime + t + 2 * 60;
-                rq.setArriveBy(false);
-                rq.parkAndRide = false;
-                rq.setModes(new TraverseModeSet("TRANSIT,WALK"));
-
-                time = System.currentTimeMillis();
-                paths = gpFinder.graphPathFinderEntryPoint(rq);
                 plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
-                rtime += System.currentTimeMillis() - time;
-                newTime(rtime);
+                timeOw += System.currentTimeMillis() - time;
+                newTime(timeOw);
 
                 if (plan != null) {
                     t = plan.itinerary.get(0).duration;
                     dur += t;
-                    avgDuration += t;
+                    avgDuration += dur;
                     if (plan.itinerary.get(0).pnrNode != null) {
-                        LOG.info(plan.itinerary.get(0).pnrNode.toString());
                         out.setOwSecondParkingLat(plan.itinerary.get(0).pnrNode.y);
                         out.setOwSecondParkingLon(plan.itinerary.get(0).pnrNode.x);
                     }
                 }
 
                 out.setOwDuration((int) dur);
-                out.setOwTime((int) rtime);
+                out.setOwTime((int) timeOw);
                 outputs.add(out);
-                LOG.info("Routing " + out);
             } catch (PathNotFoundException e) {
                 LOG.error("Path not found");
                 skipped++;
@@ -276,30 +238,33 @@ public class TwoWayTester {
         LOG.info("Generating test data");
         Random r = new Random();
         List<TestInput> list = new ArrayList<TestInput>();
-        
+
         for (int i = 0; i < params.experimentsNumber; i++) {
             TestInput t = new TestInput(i);
-            
+
             t.setFrom(generateLocation(r, params.bboxSrc, params.bboxSrcExcept));
             t.setTo(generateLocation(r, params.bboxTgt));
-            
+
             long time = generateTime(t.getArrivalDate(), params.arrFromTime, params.arrToTime, tz);
             t.setArrivalTime(dateFormat.format(new Date(time)));
-            
-//          t.setDepartureTime(dateFormat.format(new Date(time+6*60*60*1000)));
-            time = generateTime(t.getArrivalDate(), params.arrFromTime, params.arrToTime, tz);
-            t.setDepartureTime(dateFormat.format(new Date(time)));
-            
+
+            // t.setDepartureTime(dateFormat.format(new Date(time+6*60*60*1000)));
+            long time2 = generateTime(t.getDepartureDate(), params.depFromTime, params.depToTime,
+                    tz);
+            if (time2 < time)
+                time2 += 24 * 60 * 60 * 1000;
+            t.setDepartureTime(dateFormat.format(new Date(time2)));
+
             int car = rand.nextInt(2);
             if (car == 1)
                 t.setInitialMode("CAR");
             else
                 t.setInitialMode("BICYCLE");
-            
+
             list.add(t);
-            LOG.info("Generated "+i);
+            LOG.info("Generated " + i);
         }
-        
+
         TwoWayCsvTestReader csv = new TwoWayCsvTestReader();
         try {
             LOG.info("Output file: " + params.outputFile.getAbsolutePath());
@@ -309,19 +274,21 @@ public class TwoWayTester {
         }
         LOG.info("Done generating");
     }
-    
+
     private long generateTime(String date, String from, String to, TimeZone tz) {
         Date fromDT = DateUtils.toDate(date, from, tz);
         Date toDT = DateUtils.toDate(date, to, tz);
-        int deltaMinutes = (int)((toDT.getTime() / 1000)-(fromDT.getTime() / 1000));
+        if (toDT.compareTo(fromDT) < 0)
+            toDT = new Date(toDT.getTime() + 24 * 60 * 60 * 1000);
+        int deltaMinutes = (int) ((toDT.getTime() / 1000) - (fromDT.getTime() / 1000)) / 60;
         int randomMinutes = rand.nextInt(deltaMinutes + 1);
-        return fromDT.getTime()+randomMinutes*60*1000;
+        return fromDT.getTime() + randomMinutes * 60 * 1000;
     }
 
     private GenericLocation generateLocation(Random r, BBox bbox) {
         return generateLocation(r, bbox, null);
     }
-    
+
     private GenericLocation generateLocation(Random r, BBox bbox, BBox except) {
         double lat;
         do {

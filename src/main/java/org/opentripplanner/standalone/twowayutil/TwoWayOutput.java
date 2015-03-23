@@ -208,17 +208,23 @@ public class TwoWayOutput {
         this.initialMode = initialMode;
     }
 
-    public void generateRequest(RoutingRequest rq, Graph graph) {
+    public void generateRequest(RoutingRequest rq, Graph graph, boolean arriveby) {
         rq.routerId = "default";
-        rq.from = new GenericLocation(getFromLat(), getFromLon());
-        rq.to = new GenericLocation(getToLat(), getToLon());
-        rq.maxWalkDistance = 1207.008;
+        if (arriveby) {
+            rq.from = new GenericLocation(getFromLat(), getFromLon());
+            rq.to = new GenericLocation(getToLat(), getToLon());
+        } else {
+            rq.to = new GenericLocation(getFromLat(), getFromLon());
+            rq.from = new GenericLocation(getToLat(), getToLon());
+        }
+//        rq.maxWalkDistance = 1207.008;
         rq.wheelchairAccessible = false;
         rq.showIntermediateStops = false;
         rq.clampInitialWait = -1;
-        rq.setArriveBy(true);
+        rq.setArriveBy(arriveby);
+        rq.locale = Locale.ENGLISH;
         rq.modes = new TraverseModeSet("WALK,TRANSIT,"+getInitialMode());
-        if (getInitialMode().equals("BIKE"))
+        if (getInitialMode().equals("BICYCLE"))
             rq.bikeParkAndRide = true;
         else
             rq.parkAndRide = true;
@@ -226,14 +232,18 @@ public class TwoWayOutput {
         rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
         rq.returnDateTime = rq.dateTime;
         rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
-//        if (rq.rctx == null) {
-//            rq.setRoutingContext(graph);
-//            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
-//                    new NoThruTrafficPathParser() };
-//        }
+        if (rq.rctx == null) {
+            rq.setRoutingContext(graph);
+            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                    new NoThruTrafficPathParser() };
+        }
         rq.numItineraries = 1;
-//        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
-//        rq.longDistance = true;
+        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+        rq.longDistance = true;
+        if (rq.maxWalkDistance == Double.MAX_VALUE)
+            rq.maxWalkDistance = 2000;
+        if (rq.maxWalkDistance > 15000)
+            rq.maxWalkDistance = 15000;
 //        rq.maxTransfers = 4;
     }
 }
