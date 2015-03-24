@@ -19,12 +19,6 @@ public class OneWayOutput {
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double fromLon;
 
-    @CsvField()
-    private String arrivalDate;
-
-    @CsvField()
-    private String arrivalTime;
-
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double toLat;
 
@@ -32,10 +26,19 @@ public class OneWayOutput {
     private double toLon;
 
     @CsvField()
+    private String arrivalDate;
+
+    @CsvField()
+    private String arrivalTime;
+
+    @CsvField()
     private String departureDate;
 
     @CsvField()
     private String departureTime;
+
+    @CsvField()
+    private String initialMode;
 
     //routing time
     @CsvField()
@@ -53,6 +56,12 @@ public class OneWayOutput {
     private int owDuration;
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
+    private double twParkingLat;
+
+    @CsvField(mapping = LatLonFieldMappingFactory.class)
+    private double twParkingLon;
+
+    @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double owFirstParkingLat;
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
@@ -63,12 +72,6 @@ public class OneWayOutput {
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double owSecondParkingLon;
-
-    @CsvField(mapping = LatLonFieldMappingFactory.class)
-    private double twParkingLat;
-
-    @CsvField(mapping = LatLonFieldMappingFactory.class)
-    private double twParkingLon;
 
     public OneWayOutput() {
     }
@@ -87,6 +90,15 @@ public class OneWayOutput {
         setTwDuration(info.getDuration());
         setDepartureDate(info.getDepartureDate());
         setArrivalDate(info.getArrivalDate());
+        setInitialMode(info.getInitialMode());
+    }
+
+    public String getInitialMode() {
+        return initialMode;
+    }
+    
+    public void setInitialMode(String initialMode) {
+        this.initialMode = initialMode;
     }
 
     public String getArrivalDate() {

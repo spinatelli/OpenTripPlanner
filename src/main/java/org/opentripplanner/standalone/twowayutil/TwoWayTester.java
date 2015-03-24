@@ -82,9 +82,7 @@ public class TwoWayTester {
         LOG.info("Starting tests");
         List<TwoWayOutput> outputs = new ArrayList<TwoWayOutput>();
         Router router = server.getRouter("default");
-        GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent
-                                                                // router-scoped GraphPathFinder but
-                                                                // there's no setup cost here
+        
         for (TestInput info : infos) {
             // TestInput info = infos.get(0);
             LOG.info("Routing " + info);
@@ -100,8 +98,8 @@ public class TwoWayTester {
                     skipped++;
                     continue;
                 }
-                TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
                 t = System.currentTimeMillis() - time;
+                TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
                 LOG.info("Took " + t + " millis");
                 newTime(t);
                 TwoWayOutput out = new TwoWayOutput(info, (int) t);
@@ -201,8 +199,11 @@ public class TwoWayTester {
                     continue;
                 }
                 plan = GraphPathToTripPlanConverter.generatePlan(paths, rq);
-                timeOw += System.currentTimeMillis() - time;
+                t = System.currentTimeMillis() - time;
+                LOG.info("Took " + t + " millis");
+                timeOw += t;
                 newTime(timeOw);
+                LOG.info("Total " + timeOw + " millis");
 
                 if (plan != null) {
                     t = plan.itinerary.get(0).duration;
