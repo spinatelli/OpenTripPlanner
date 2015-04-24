@@ -50,10 +50,16 @@ public class OneWayOutput {
 
     // trip duration (2 way)
     @CsvField()
-    private int twDuration;
+    private int twOutwardLeg;
     
     @CsvField()
-    private int owDuration;
+    private int twReturnLeg;
+    
+    @CsvField()
+    private int owOutwardLeg;
+    
+    @CsvField()
+    private int owReturnLeg;
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double twParkingLat;
@@ -73,6 +79,55 @@ public class OneWayOutput {
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double owSecondParkingLon;
 
+    @CsvField()
+    private int owOutwardTransfers;
+    @CsvField()
+    private int owReturnTransfers;
+    @CsvField()
+    private long owOutwardTransitTime;
+    @CsvField()
+    private long owReturnTransitTime;
+    @CsvField()
+    private long owOutwardWalkTime;
+    @CsvField()
+    private long owReturnWalkTime;
+    @CsvField()
+    private long owOutwardCarTime;
+    @CsvField()
+    private long owReturnCarTime;
+    @CsvField()
+    private long owOutwardBikeTime;
+    @CsvField()
+    private long owReturnBikeTime;
+    @CsvField(optional=true)
+    private long owOutwardWaitingTime;
+    @CsvField(optional=true)
+    private long owReturnWaitingTime;
+    @CsvField(optional=true)
+    private int twOutwardTransfers;
+    @CsvField(optional=true)
+    private int twReturnTransfers;
+    @CsvField(optional=true)
+    private long twOutwardTransitTime;
+    @CsvField(optional=true)
+    private long twReturnTransitTime;
+    @CsvField(optional=true)
+    private long twOutwardWalkTime;
+    @CsvField(optional=true)
+    private long twReturnWalkTime;
+    @CsvField(optional=true)
+    private long twOutwardCarTime;
+    @CsvField(optional=true)
+    private long twReturnCarTime;
+    @CsvField(optional=true)
+    private long twOutwardBikeTime;
+    @CsvField(optional=true)
+    private long twReturnBikeTime;
+    @CsvField(optional=true)
+    private long twOutwardWaitingTime;
+    @CsvField(optional=true)
+    private long twReturnWaitingTime;
+
     public OneWayOutput() {
     }
     
@@ -87,10 +142,23 @@ public class OneWayOutput {
         setTwParkingLon(info.getParkingLon());
         setTwParkingLat(info.getParkingLat());
         setTwTime(info.getTime());
-        setTwDuration(info.getDuration());
+        setTwOutwardLeg(info.getOutwardLeg());
+        setTwReturnLeg(info.getReturnLeg());
         setDepartureDate(info.getDepartureDate());
         setArrivalDate(info.getArrivalDate());
         setInitialMode(info.getInitialMode());
+        setTwOutwardTransfers(info.getOutwardTransfers());
+        setTwOutwardTransitTime(info.getOutwardTransitTime());
+        setTwOutwardWalkTime(info.getOutwardWalkTime());
+        setTwOutwardCarTime(info.getOutwardCarTime());
+        setTwOutwardBikeTime(info.getOutwardBikeTime());
+        setTwOutwardWaitingTime(info.getOutwardBikeTime());
+        setTwReturnTransfers(info.getReturnTransfers());
+        setTwReturnTransitTime(info.getReturnTransitTime());
+        setTwReturnWalkTime(info.getReturnWalkTime());
+        setTwReturnCarTime(info.getReturnCarTime());
+        setTwReturnBikeTime(info.getReturnBikeTime());
+        setTwReturnWaitingTime(info.getReturnBikeTime());
     }
 
     public String getInitialMode() {
@@ -193,20 +261,36 @@ public class OneWayOutput {
         this.owTime = owTime;
     }
 
-    public int getTwDuration() {
-        return twDuration;
+    public int getOwOutwardLeg() {
+        return owOutwardLeg;
     }
 
-    public void setTwDuration(int twDuration) {
-        this.twDuration = twDuration;
+    public void setOwOutwardLeg(int owOutwardLeg) {
+        this.owOutwardLeg = owOutwardLeg;
     }
 
-    public int getOwDuration() {
-        return owDuration;
+    public int getOwReturnLeg() {
+        return owReturnLeg;
     }
 
-    public void setOwDuration(int owDuration) {
-        this.owDuration = owDuration;
+    public void setOwReturnLeg(int owReturnLeg) {
+        this.owReturnLeg = owReturnLeg;
+    }
+
+    public int getTwOutwardLeg() {
+        return twOutwardLeg;
+    }
+
+    public void setTwOutwardLeg(int twOutwardLeg) {
+        this.twOutwardLeg = twOutwardLeg;
+    }
+
+    public int getTwReturnLeg() {
+        return twReturnLeg;
+    }
+
+    public void setTwReturnLeg(int twReturnLeg) {
+        this.twReturnLeg = twReturnLeg;
     }
 
     public double getOwFirstParkingLat() {
@@ -255,5 +339,197 @@ public class OneWayOutput {
 
     public void setTwParkingLon(double twParkingLon) {
         this.twParkingLon = twParkingLon;
+    }
+
+    public int getOwOutwardTransfers() {
+        return owOutwardTransfers;
+    }
+
+    public void setOwOutwardTransfers(int owOutwardTransfers) {
+        this.owOutwardTransfers = owOutwardTransfers;
+    }
+
+    public int getOwReturnTransfers() {
+        return owReturnTransfers;
+    }
+
+    public void setOwReturnTransfers(int owReturnTransfers) {
+        this.owReturnTransfers = owReturnTransfers;
+    }
+
+    public long getOwOutwardTransitTime() {
+        return owOutwardTransitTime;
+    }
+
+    public void setOwOutwardTransitTime(long owOutwardTransitTime) {
+        this.owOutwardTransitTime = owOutwardTransitTime;
+    }
+
+    public long getOwReturnTransitTime() {
+        return owReturnTransitTime;
+    }
+
+    public void setOwReturnTransitTime(long owReturnTransitTime) {
+        this.owReturnTransitTime = owReturnTransitTime;
+    }
+
+    public long getOwOutwardWalkTime() {
+        return owOutwardWalkTime;
+    }
+
+    public void setOwOutwardWalkTime(long owOutwardWalkTime) {
+        this.owOutwardWalkTime = owOutwardWalkTime;
+    }
+
+    public long getOwReturnWalkTime() {
+        return owReturnWalkTime;
+    }
+
+    public void setOwReturnWalkTime(long owReturnWalkTime) {
+        this.owReturnWalkTime = owReturnWalkTime;
+    }
+
+    public long getOwOutwardCarTime() {
+        return owOutwardCarTime;
+    }
+
+    public void setOwOutwardCarTime(long owOutwardCarTime) {
+        this.owOutwardCarTime = owOutwardCarTime;
+    }
+
+    public long getOwReturnCarTime() {
+        return owReturnCarTime;
+    }
+
+    public void setOwReturnCarTime(long owReturnCarTime) {
+        this.owReturnCarTime = owReturnCarTime;
+    }
+
+    public long getOwOutwardBikeTime() {
+        return owOutwardBikeTime;
+    }
+
+    public void setOwOutwardBikeTime(long owOutwardBikeTime) {
+        this.owOutwardBikeTime = owOutwardBikeTime;
+    }
+
+    public long getOwReturnBikeTime() {
+        return owReturnBikeTime;
+    }
+
+    public void setOwReturnBikeTime(long owReturnBikeTime) {
+        this.owReturnBikeTime = owReturnBikeTime;
+    }
+
+    public int getTwOutwardTransfers() {
+        return twOutwardTransfers;
+    }
+
+    public void setTwOutwardTransfers(int twOutwardTransfers) {
+        this.twOutwardTransfers = twOutwardTransfers;
+    }
+
+    public int getTwReturnTransfers() {
+        return twReturnTransfers;
+    }
+
+    public void setTwReturnTransfers(int twReturnTransfers) {
+        this.twReturnTransfers = twReturnTransfers;
+    }
+
+    public long getTwOutwardTransitTime() {
+        return twOutwardTransitTime;
+    }
+
+    public void setTwOutwardTransitTime(long twOutwardTransitTime) {
+        this.twOutwardTransitTime = twOutwardTransitTime;
+    }
+
+    public long getTwReturnTransitTime() {
+        return twReturnTransitTime;
+    }
+
+    public void setTwReturnTransitTime(long twReturnTransitTime) {
+        this.twReturnTransitTime = twReturnTransitTime;
+    }
+
+    public long getTwOutwardWalkTime() {
+        return twOutwardWalkTime;
+    }
+
+    public void setTwOutwardWalkTime(long twOutwardWalkTime) {
+        this.twOutwardWalkTime = twOutwardWalkTime;
+    }
+
+    public long getTwReturnWalkTime() {
+        return twReturnWalkTime;
+    }
+
+    public void setTwReturnWalkTime(long twReturnWalkTime) {
+        this.twReturnWalkTime = twReturnWalkTime;
+    }
+
+    public long getTwOutwardCarTime() {
+        return twOutwardCarTime;
+    }
+
+    public void setTwOutwardCarTime(long twOutwardCarTime) {
+        this.twOutwardCarTime = twOutwardCarTime;
+    }
+
+    public long getTwReturnCarTime() {
+        return twReturnCarTime;
+    }
+
+    public void setTwReturnCarTime(long twReturnCarTime) {
+        this.twReturnCarTime = twReturnCarTime;
+    }
+
+    public long getTwOutwardBikeTime() {
+        return twOutwardBikeTime;
+    }
+
+    public void setTwOutwardBikeTime(long twOutwardBikeTime) {
+        this.twOutwardBikeTime = twOutwardBikeTime;
+    }
+
+    public long getTwReturnBikeTime() {
+        return twReturnBikeTime;
+    }
+
+    public void setTwReturnBikeTime(long twReturnBikeTime) {
+        this.twReturnBikeTime = twReturnBikeTime;
+    }
+
+    public long getOwOutwardWaitingTime() {
+        return owOutwardWaitingTime;
+    }
+
+    public void setOwOutwardWaitingTime(long owOutwardWaitingTime) {
+        this.owOutwardWaitingTime = owOutwardWaitingTime;
+    }
+
+    public long getOwReturnWaitingTime() {
+        return owReturnWaitingTime;
+    }
+
+    public void setOwReturnWaitingTime(long owReturnWaitingTime) {
+        this.owReturnWaitingTime = owReturnWaitingTime;
+    }
+
+    public long getTwOutwardWaitingTime() {
+        return twOutwardWaitingTime;
+    }
+
+    public void setTwOutwardWaitingTime(long twOutwardWaitingTime) {
+        this.twOutwardWaitingTime = twOutwardWaitingTime;
+    }
+
+    public long getTwReturnWaitingTime() {
+        return twReturnWaitingTime;
+    }
+
+    public void setTwReturnWaitingTime(long twReturnWaitingTime) {
+        this.twReturnWaitingTime = twReturnWaitingTime;
     }
 }

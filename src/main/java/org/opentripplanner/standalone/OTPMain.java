@@ -16,9 +16,13 @@ package org.opentripplanner.standalone;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Collection;
 
 import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.graph_builder.GraphBuilder;
+import org.opentripplanner.routing.edgetype.StreetTransitLink;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
 import org.opentripplanner.routing.impl.GraphScanner;
@@ -205,48 +209,19 @@ public class OTPMain {
         if (params.oneWayTest) {
             TwoWayTester tester = new TwoWayTester(otpServer);
             tester.oneWayTest(params.testInput, params.testOutput);
+//            tester.oneWayOptimizedTest(params.testInput, params.testOutput);
             System.exit(0);
         }
 
         if (params.twoWayTest) {
              TwoWayTester tester = new TwoWayTester(otpServer);
              tester.twoWayTest(params.testInput, params.testOutput);
-//            Router router = otpServer.getRouter("default");
-//            GraphPathFinder gpFinder = new GraphPathFinder(router);
-//            RoutingRequest rq = router.defaultRoutingRequest.clone();
-//            rq.routerId = "default";
-//            rq.setFromString("45.50674541159436,9.195583462715149");
-//            rq.setToString("45.46817080880512,9.19528841972351");
-//            rq.maxWalkDistance = 1207.008;
-//            rq.wheelchairAccessible = false;
-//
-//            rq.showIntermediateStops = false;
-//            rq.clampInitialWait = -1;
-//            rq.arriveBy = false;
-//            rq.locale = Locale.ENGLISH;
-//            rq.modes = new TraverseModeSet("WALK,CAR,TRANSIT");
-//            rq.parkAndRide = true;
-//            // rq.twoway = true;
-//            rq.setDateTime("03-07-2015", "9:09am", router.graph.getTimeZone());
-//            if (rq.rctx == null) {
-//                rq.setRoutingContext(router.graph);
-//                // rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
-//                // new NoThruTrafficPathParser() };
-//            }
-//            rq.numItineraries = 2;
-//            rq.dominanceFunction = new DominanceFunction.MinimumWeight();
-//            rq.longDistance = true;
-//            rq.maxTransfers = 4;
-//            Algorithm d = new PNRDijkstra();
-//            List<GraphPath> paths = d.getShortestPathTree(rq).getPaths();
-//            if (paths.isEmpty())
-//                LOG.info("WTF");
             System.exit(0);
         }
 
         if (params.generateTestData) {
             TwoWayTester tester = new TwoWayTester(otpServer);
-            JsonNode generationConfig = OTPMain.loadJson(new File(params.graphDirectory, "generator.json"));
+            JsonNode generationConfig = OTPMain.loadJson(params.generator);
             TestGenerationParameters generationParams = new TestGenerationParameters(generationConfig);
             tester.generateTestData(generationParams, otpServer.getRouter("default").graph.getTimeZone());
             System.exit(0);
@@ -281,8 +256,19 @@ public class OTPMain {
             }
             counter++;
         }
-        int s = Lists.newArrayList(Iterables.filter(g.getVertices(), TransitStop.class)).size();
-        LOG.info("Transit Stops: " + s);
+        ArrayList<TransitStop> s = Lists.newArrayList(Iterables.filter(g.getVertices(), TransitStop.class));
+        int i = 0;
+        for (TransitStop ts : s) {
+            Collection<Edge> ed = ts.getOutgoing();
+            if (ed.size() > 0) {
+                for (Edge e: ed)
+                    if (e instanceof StreetTransitLink) {
+                        i++;
+                        break;
+                    }
+            }
+        }
+        LOG.info("Transit Stops: " + i+"/"+s.size());
         LOG.info(an + " Intersection vertices out of " + counter + " have access nodes");
         LOG.info("Intersection vertices with access nodes have " + (ans / an)
                 + " access nodes on average");

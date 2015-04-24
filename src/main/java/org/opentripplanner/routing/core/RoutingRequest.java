@@ -144,6 +144,8 @@ public class RoutingRequest implements Cloneable, Serializable {
     public Locale locale = new Locale("en", "US");
     
     public boolean twoway = false;
+    public boolean carParked = false;
+    public boolean bikeParked = false;
 
     /**
      * An extra penalty added on transfers (i.e. all boardings except the first one).

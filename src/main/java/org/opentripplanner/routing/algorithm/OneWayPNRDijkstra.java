@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.algorithm.strategies.SearchTerminationStrategy;
 import org.opentripplanner.routing.core.RoutingContext;
@@ -51,9 +52,9 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Envelope;
 
-public class PNRDijkstra implements Algorithm {
+public class OneWayPNRDijkstra implements Algorithm {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PNRDijkstra.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OneWayPNRDijkstra.class);
 
     private static final MonitoringStore store = MonitoringStoreFactory.getStore();
 
@@ -62,31 +63,21 @@ public class PNRDijkstra implements Algorithm {
     private TraverseVisitor traverseVisitor;
 
     class RunState {
-        public Map<Vertex, State> pnrOut = new HashMap<Vertex, State>();
-
-        public Map<Vertex, State> pnrIn = new HashMap<Vertex, State>();
+        public Map<Vertex, State> pnr = new HashMap<Vertex, State>();
 
         public State u;
 
-        public ShortestPathTree sptIn;
+        public ShortestPathTree spt;
 
-        public ShortestPathTree sptOut;
+        Map<Vertex, State> milestone;
 
-        Map<Vertex, State> milestoneOut;
-
-        Map<Vertex, State> milestoneIn;
-
-        BinHeap<State> pqOut;
-
-        BinHeap<State> pqIn;
+        BinHeap<State> pq;
 
         public RoutingContext rctx;
 
         public int nVisited;
 
-        private RoutingRequest optionsIn;
-
-        private RoutingRequest optionsOut;
+        private RoutingRequest options;
 
         public Vertex u_vertex;
 
@@ -99,26 +90,22 @@ public class PNRDijkstra implements Algorithm {
         protected IntersectionVertex targetVertex;
 
         public Set<Vertex> sourcePNRAccessNodes;
-
         public Set<Vertex> sourcePNRBwdAccessNodes;
 
         public TraverseMode initialMode;
 
-        public double minWeightIn = Double.MIN_VALUE;
+        public double minWeight = Double.MIN_VALUE;
 
-        public double minWeightOut = Double.MIN_VALUE;
-
-        public RunState(RoutingRequest options) {
-            initialMode = options.modes.getBicycle() ? TraverseMode.BICYCLE : TraverseMode.CAR;
-            optionsOut = options.clone();
-            optionsOut.arriveBy = true;
-            optionsOut.worstTime = Long.MIN_VALUE;
-            optionsIn = options.clone();
-            optionsIn.dateTime = options.returnDateTime;
-            optionsIn.arriveBy = false;
-            optionsIn.worstTime = Long.MAX_VALUE;
-            optionsIn.from = optionsOut.to;
-            optionsIn.to = optionsOut.from;
+        public RunState(RoutingRequest opt) {
+            initialMode = opt.modes.getBicycle() ? TraverseMode.BICYCLE : TraverseMode.CAR;
+            options = opt.clone();
+            if (options.arriveBy)
+                options.worstTime = Long.MIN_VALUE;
+            else {
+                options.worstTime = Long.MAX_VALUE;
+//                options.to = options.from;
+//                options.from = opt.to;
+            }
         }
 
     }
@@ -127,15 +114,15 @@ public class PNRDijkstra implements Algorithm {
 
     public void startSearch(RoutingRequest opt, long abortTime) {
         RoutingRequest options = opt;
-        options.numItineraries = options.numItineraries * 2;
+        options.numItineraries = 1;//options.numItineraries;
 
-        // TODO: remove, it will be useless once the client supports 2way routing
-        // if (options.returnDateTime == options.dateTime)
-        if (options.returnDateTime == 0)
-            options.returnDateTime = options.dateTime + 8 * 60 * 60 + 30 * 60;
         options.parkAndRide = !options.modes.getBicycle();
         options.bikeParkAndRide = options.modes.getBicycle();
-
+        if (!options.arriveBy) {
+            GenericLocation l = options.to;
+            options.to = options.from;
+            options.from = l;
+        }
         runState = new RunState(options);
         runState.rctx = options.getRoutingContext();
 
@@ -145,39 +132,24 @@ public class PNRDijkstra implements Algorithm {
         initialSize = (int) Math.ceil(2 * (Math.sqrt((double) initialSize + 1)));
 
         // Outgoing path part
-        runState.sptOut = new MultiShortestPathTree(runState.optionsOut,
+        runState.spt = new MultiShortestPathTree(runState.options,
                 new DominanceFunction.MinimumWeight());
-        runState.optionsOut.pnrStatus = PNRStatus.WALK_LEG;
-        runState.optionsOut.setMode(TraverseMode.WALK);
+        runState.options.pnrStatus = PNRStatus.WALK_LEG;
+        runState.options.setMode(TraverseMode.WALK);
 
-        State initialState = new State(runState.targetVertex, runState.optionsOut);
+        State initialState = new State(runState.targetVertex, runState.options);
         if (runState.initialMode == TraverseMode.BICYCLE)
             initialState.setBikeParked(true);
         else
             initialState.setCarParked(true);
-        runState.sptOut.add(initialState);
+        runState.spt.add(initialState);
         // Priority Queue
-        runState.pqOut = new BinHeap<State>(initialSize);
-        runState.pqOut.insert(initialState, 0);
-
-        // Incoming path part
-        runState.sptIn = new MultiShortestPathTree(runState.optionsIn,
-                new DominanceFunction.MinimumWeight());
-        runState.optionsIn.pnrStatus = PNRStatus.WALK_LEG;
-        runState.optionsIn.setMode(TraverseMode.WALK);
-        initialState = new State(runState.targetVertex, runState.optionsIn);
-        if (runState.initialMode == TraverseMode.BICYCLE)
-            initialState.setBikeParked(true);
-        else
-            initialState.setCarParked(true);
-        runState.sptIn.add(initialState);
-        runState.pqIn = new BinHeap<State>(initialSize);
-        runState.pqIn.insert(initialState, 0);
-
+        runState.pq = new BinHeap<State>(initialSize);
+        runState.pq.insert(initialState, 0);
+        
         initialSize = Sets.newHashSet(
                 Iterables.filter(runState.rctx.graph.getVertices(), TransitStop.class)).size();
-        runState.milestoneIn = new HashMap<Vertex, State>(initialSize);
-        runState.milestoneOut = new HashMap<Vertex, State>(initialSize);
+        runState.milestone = new HashMap<Vertex, State>(initialSize);
         runState.sourcePNRAccessNodes = new HashSet<Vertex>();
         runState.sourcePNRBwdAccessNodes = new HashSet<Vertex>();
 
@@ -201,11 +173,11 @@ public class PNRDijkstra implements Algorithm {
         runState.nVisited = 0;
     }
 
-    boolean iterate(boolean queueIn) {
+    boolean iterate() {
         if (verbose) {
-            double w = runState.pqOut.peek_min_key();
+            double w = runState.pq.peek_min_key();
             System.out.println("pqOut min key = " + w);
-            w = runState.pqIn.peek_min_key();
+            w = runState.pq.peek_min_key();
             System.out.println("pqIn min key = " + w);
         }
 
@@ -215,17 +187,10 @@ public class PNRDijkstra implements Algorithm {
         BinHeap<State> queue;
         Map<Vertex, State> milestoneSet;
 
-        if (queueIn) {
-            spt = runState.sptIn;
-            options = runState.optionsIn;
-            queue = runState.pqIn;
-            milestoneSet = runState.milestoneIn;
-        } else {
-            spt = runState.sptOut;
-            options = runState.optionsOut;
-            queue = runState.pqOut;
-            milestoneSet = runState.milestoneOut;
-        }
+        spt = runState.spt;
+        options = runState.options;
+        queue = runState.pq;
+        milestoneSet = runState.milestone;
 
         runState.u = queue.extract_min();
         // check that this state has not been dominated
@@ -306,62 +271,62 @@ public class PNRDijkstra implements Algorithm {
         if (runState.u.stateData.isArriveBy()) {
             if (opt.pnrStatus == PNRStatus.WALK_LEG && v_vertex instanceof TransitStop
                     && runState.targetVertex.backwardAccessNodes.contains(v_vertex)) {
-                if (!runState.milestoneOut.containsKey(v_vertex))
-                    runState.milestoneOut.put(v_vertex, v);
-                if (runState.milestoneOut.size() == runState.targetVertex.backwardAccessNodes
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.targetVertex.backwardAccessNodes
                         .size())
                     return true;
             } else if (opt.pnrStatus == PNRStatus.TRANSIT_LEG && v_vertex instanceof TransitStop
                     && isPNRAccessNode(runState.sourceVertex, v_vertex)) {
-                if (!runState.milestoneOut.containsKey(v_vertex))
-                    runState.milestoneOut.put(v_vertex, v);
-                if (runState.milestoneOut.size() == runState.sourcePNRAccessNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.sourcePNRAccessNodes.size())
                     return true;
             } else if (opt.pnrStatus == PNRStatus.PNR_TRANSFER
                     && runState.initialMode == TraverseMode.CAR
                     && v_vertex instanceof ParkAndRideVertex
                     && runState.sourceVertex.pnrNodes.contains(v_vertex)) {
-                if (!runState.milestoneOut.containsKey(v_vertex))
-                    runState.milestoneOut.put(v_vertex, v);
-                if (runState.milestoneOut.size() == runState.sourceVertex.pnrNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.sourceVertex.pnrNodes.size())
                     return true;
             } else if (opt.pnrStatus == PNRStatus.PNR_TRANSFER
                     && runState.initialMode == TraverseMode.BICYCLE
                     && v_vertex instanceof BikeParkVertex
                     && runState.sourceVertex.bikePNRNodes.contains(v_vertex)) {
-                if (!runState.milestoneOut.containsKey(v_vertex))
-                    runState.milestoneOut.put(v_vertex, v);
-                if (runState.milestoneOut.size() == runState.sourceVertex.bikePNRNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.sourceVertex.bikePNRNodes.size())
                     return true;
             }
         } else {
             if (opt.pnrStatus == PNRStatus.WALK_LEG && v_vertex instanceof TransitStop
                     && runState.targetVertex.accessNodes.contains(v_vertex)) {
-                if (!runState.milestoneIn.containsKey(v_vertex))
-                    runState.milestoneIn.put(v_vertex, v);
-                if (runState.milestoneIn.size() == runState.targetVertex.accessNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.targetVertex.accessNodes.size())
                     return true;
             } else if (opt.pnrStatus == PNRStatus.TRANSIT_LEG && v_vertex instanceof TransitStop
                     && isPNRBwdAccessNode(runState.sourceVertex, v_vertex)) {
-                if (!runState.milestoneIn.containsKey(v_vertex))
-                    runState.milestoneIn.put(v_vertex, v);
-                if (runState.milestoneIn.size() == runState.sourcePNRBwdAccessNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.sourcePNRBwdAccessNodes.size())
                     return true;
             } else if (opt.pnrStatus == PNRStatus.PNR_TRANSFER
                     && runState.initialMode == TraverseMode.CAR
                     && v_vertex instanceof ParkAndRideVertex
                     && runState.sourceVertex.pnrNodes.contains(v_vertex)) {
-                if (!runState.milestoneIn.containsKey(v_vertex))
-                    runState.milestoneIn.put(v_vertex, v);
-                if (runState.milestoneIn.size() == runState.sourceVertex.pnrNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.sourceVertex.pnrNodes.size())
                     return true;
             } else if (opt.pnrStatus == PNRStatus.PNR_TRANSFER
                     && runState.initialMode == TraverseMode.BICYCLE
                     && v_vertex instanceof BikeParkVertex
                     && runState.sourceVertex.bikePNRNodes.contains(v_vertex)) {
-                if (!runState.milestoneIn.containsKey(v_vertex))
-                    runState.milestoneIn.put(v_vertex, v);
-                if (runState.milestoneIn.size() == runState.sourceVertex.bikePNRNodes.size())
+                if (!runState.milestone.containsKey(v_vertex))
+                    runState.milestone.put(v_vertex, v);
+                if (runState.milestone.size() == runState.sourceVertex.bikePNRNodes.size())
                     return true;
             }
         }
@@ -401,17 +366,15 @@ public class PNRDijkstra implements Algorithm {
     }
 
     void runSearch(long abortTime) {
-        while (!runState.pqOut.empty() || !runState.pqIn.empty()) {
+        while (!runState.pq.empty()) {
             /*
              * Terminate based on timeout?
              */
             if (abortTime < Long.MAX_VALUE && System.currentTimeMillis() > abortTime) {
                 LOG.warn("Search timeout. origin={} target={}", runState.rctx.origin,
                         runState.rctx.target);
-                runState.optionsOut.rctx.aborted = true;
-                runState.optionsIn.rctx.aborted = true;
-                runState.optionsIn.rctx.debugOutput.timedOut = true;
-                runState.optionsOut.rctx.debugOutput.timedOut = true;
+                runState.options.rctx.aborted = true;
+                runState.options.rctx.debugOutput.timedOut = true;
                 break;
             }
 
@@ -420,26 +383,16 @@ public class PNRDijkstra implements Algorithm {
             Double maxWeight;
             BinHeap<State> queue;
             Map<Vertex, State> milestoneSet;
-            boolean queueIn = runState.pqOut.empty() || !runState.pqIn.empty()
-                    && runState.pqOut.peek_min_key() > runState.pqIn.peek_min_key();
-            if (queueIn) {
-                key = runState.pqIn.peek_min_key();
-                options = runState.optionsIn;
-                maxWeight = runState.foundPathWeight - runState.minWeightOut;
-                queue = runState.pqIn;
-                milestoneSet = runState.milestoneIn;
-            } else {
-                key = runState.pqOut.peek_min_key();
-                options = runState.optionsOut;
-                maxWeight = runState.foundPathWeight - runState.minWeightIn;
-                queue = runState.pqOut;
-                milestoneSet = runState.milestoneOut;
-            }
+            key = runState.pq.peek_min_key();
+            options = runState.options;
+            maxWeight = runState.foundPathWeight - runState.minWeight;
+            queue = runState.pq;
+            milestoneSet = runState.milestone;
 
             if (key >= maxWeight)
                 break;
 
-            if (!iterate(queueIn)) {
+            if (!iterate()) {
                 if (queue.empty())
                     addAllFromMilestoneSet(queue, milestoneSet);
                 continue;
@@ -448,57 +401,12 @@ public class PNRDijkstra implements Algorithm {
             // TODO: rctx.target has to be set depending on search direction
             if (runState.u_vertex == runState.sourceVertex && runState.u.pnrNode != null
                     && runState.u.getPNRStatus().isFinal()) {
-                // bwd search = outgoing path
-                if (!queueIn) {
-                    // if we're using a pnr node and it has not yet been settled by this search
-                    if (!runState.pnrOut.containsKey(runState.u.pnrNode)) {
-                        // set as used
-                        runState.pnrOut.put(runState.u.pnrNode, runState.u);
-                        double w = runState.u.getWeight();
-                        if (w < runState.minWeightOut)
-                            runState.minWeightOut = w;
-
-                        // it has been settled by the other search too
-                        if (runState.pnrIn.containsKey(runState.u.pnrNode)) {
-                            // new solution for u.pnrNode
-                            double newWeight = w
-                                    + runState.pnrIn.get(runState.u.pnrNode).getWeight();
-                            double modWeight = w + runState.minWeightIn;
-                            if (modWeight >= runState.foundPathWeight) {
-                                options.rctx.debugOutput.foundPath();
-                                break;
-                            }
-                            if (newWeight < runState.foundPathWeight) {
-                                runState.foundPathWeight = newWeight;
-                                runState.currentPNR = runState.u.pnrNode;
-                            }
-                        }
-                    }
-                } else {
-                    // if we're using a pnr node and it has not yet been settled by this search
-                    if (!runState.pnrIn.containsKey(runState.u.pnrNode)) {
-                        // set as used
-                        runState.pnrIn.put(runState.u.pnrNode, runState.u);
-                        double w = runState.u.getWeight();
-                        if (w < runState.minWeightIn)
-                            runState.minWeightIn = w;
-                        // it has been settled by the other search too
-                        if (runState.pnrOut.containsKey(runState.u.pnrNode)) {
-                            // new solution for u.pnrNode
-                            double newWeight = w
-                                    + runState.pnrOut.get(runState.u.pnrNode).getWeight();
-                            double modWeight = w + runState.minWeightOut;
-                            if (modWeight >= runState.foundPathWeight) {
-                                options.rctx.debugOutput.foundPath();
-                                break;
-                            }
-                            if (newWeight < runState.foundPathWeight) {
-                                runState.foundPathWeight = newWeight;
-                                runState.currentPNR = runState.u.pnrNode;
-                            }
-                        }
-                    }
+                if (runState.u.getWeight() >= runState.foundPathWeight) {
+                    options.rctx.debugOutput.foundPath();
+                    break;
                 }
+                runState.foundPathWeight = runState.u.getWeight();
+                runState.currentPNR = runState.u.pnrNode;
             }
 
             if (queue.empty())
@@ -533,8 +441,8 @@ public class PNRDijkstra implements Algorithm {
         if (runState != null) {
             runSearch(Long.MAX_VALUE);
 
-            spt = new TwoWayMultiShortestPathTree(options, runState.sptOut, runState.sptIn,
-                    runState.sourceVertex, runState.targetVertex);
+            spt = new TwoWayMultiShortestPathTree(options, runState.spt, null,
+                    runState.sourceVertex, runState.targetVertex, true);
         }
 
         storeMemory();

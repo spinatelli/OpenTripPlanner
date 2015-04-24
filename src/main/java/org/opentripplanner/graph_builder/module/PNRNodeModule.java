@@ -100,7 +100,6 @@ public class PNRNodeModule implements GraphBuilderModule {
         for (ParkAndRideVertex ts : Iterables.filter(vertices, ParkAndRideVertex.class)) {
             // find out if the transit stop is linked to the street
             boolean linkedToStreet = false;
-            // TODO: heres's the problem
             for (Edge e : ts.getOutgoing()) {
                 if (e instanceof ParkAndRideLinkEdge) {
                     linkedToStreet = true;
@@ -113,6 +112,7 @@ public class PNRNodeModule implements GraphBuilderModule {
                 continue;
 
             /*
+             * From theory:
              * Full multi-modal backward profile search on the public transportation subnetwork of G
              * is performed, starting from a. This gives us travel time functions f(b) for each
              * access-node candidate b ∈ A, representing the time needed to get from node b to node
@@ -143,15 +143,7 @@ public class PNRNodeModule implements GraphBuilderModule {
             ShortestPathTree spt = profileDijkstra.getShortestPathTree(initial);
             time2 = System.currentTimeMillis();
             avgProfile += (time2 - time);
-
-            /*
-             * uni-modal time-independent many-to-all Dijkstra search, restricted to the road
-             * subnetwork The road network is assumed time-independent since in this case it is used
-             * on foot
-             * 
-             * ts is inserted in the priority queue with key 0 and flag "covered"= true, the other
-             * access nodes with their upper bound of the profile function above
-             */
+            
             // List<State> states = new ArrayList<State>();
             for (State s : spt.getAllStates()) {
                 Vertex v = s.getVertex();
@@ -168,7 +160,6 @@ public class PNRNodeModule implements GraphBuilderModule {
         for (ParkAndRideVertex ts : Iterables.filter(vertices, ParkAndRideVertex.class)) {
             // find out if the transit stop is linked to the street
             boolean linkedToStreet = false;
-            // TODO: heres's the problem
             for (Edge e : ts.getOutgoing()) {
                 if (e instanceof ParkAndRideLinkEdge) {
                     linkedToStreet = true;

@@ -67,13 +67,41 @@ public class TwoWayOutput {
 
     // trip duration (2 way)
     @CsvField()
-    private int duration;
+    private int outwardLeg;
+    
+    @CsvField()
+    private int returnLeg;
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double parkingLat;
 
     @CsvField(mapping = LatLonFieldMappingFactory.class)
     private double parkingLon;
+    
+    @CsvField(optional=true)
+    private int outwardTransfers;
+    @CsvField(optional=true)
+    private int returnTransfers;
+    @CsvField(optional=true)
+    private long outwardTransitTime;
+    @CsvField(optional=true)
+    private long returnTransitTime;
+    @CsvField(optional=true)
+    private long outwardWalkTime;
+    @CsvField(optional=true)
+    private long returnWalkTime;
+    @CsvField(optional=true)
+    private long outwardCarTime;
+    @CsvField(optional=true)
+    private long returnCarTime;
+    @CsvField(optional=true)
+    private long outwardBikeTime;
+    @CsvField(optional=true)
+    private long returnBikeTime;
+    @CsvField(optional=true)
+    private long outwardWaitingTime;
+    @CsvField(optional=true)
+    private long returnWaitingTime;
 
     public TwoWayOutput() {
     }
@@ -128,12 +156,20 @@ public class TwoWayOutput {
         this.id = id;
     }
 
-    public int getDuration() {
-        return duration;
+    public int getOutwardLeg() {
+        return outwardLeg;
     }
 
-    public void setDuration(int duration) {
-        this.duration = duration;
+    public void setOutwardLeg(int outwardLeg) {
+        this.outwardLeg = outwardLeg;
+    }
+
+    public int getReturnLeg() {
+        return returnLeg;
+    }
+
+    public void setReturnLeg(int returnLeg) {
+        this.returnLeg = returnLeg;
     }
 
     public double getParkingLat() {
@@ -208,16 +244,177 @@ public class TwoWayOutput {
         this.initialMode = initialMode;
     }
 
-    public void generateRequest(RoutingRequest rq, Graph graph, boolean arriveby) {
+    public int getOutwardTransfers() {
+        return outwardTransfers;
+    }
+
+    public void setOutwardTransfers(int outwardTransfers) {
+        this.outwardTransfers = outwardTransfers;
+    }
+
+    public int getReturnTransfers() {
+        return returnTransfers;
+    }
+
+    public void setReturnTransfers(int returnTransfers) {
+        this.returnTransfers = returnTransfers;
+    }
+
+    public long getOutwardTransitTime() {
+        return outwardTransitTime;
+    }
+
+    public void setOutwardTransitTime(long outwardTransitTime) {
+        this.outwardTransitTime = outwardTransitTime;
+    }
+
+    public long getReturnTransitTime() {
+        return returnTransitTime;
+    }
+
+    public void setReturnTransitTime(long returnTransitTime) {
+        this.returnTransitTime = returnTransitTime;
+    }
+
+    public long getOutwardWalkTime() {
+        return outwardWalkTime;
+    }
+
+    public void setOutwardWalkTime(long outwardWalkTime) {
+        this.outwardWalkTime = outwardWalkTime;
+    }
+
+    public long getReturnWalkTime() {
+        return returnWalkTime;
+    }
+
+    public void setReturnWalkTime(long returnWalkTime) {
+        this.returnWalkTime = returnWalkTime;
+    }
+
+    public long getOutwardCarTime() {
+        return outwardCarTime;
+    }
+
+    public void setOutwardCarTime(long outwardCarTime) {
+        this.outwardCarTime = outwardCarTime;
+    }
+
+    public long getReturnCarTime() {
+        return returnCarTime;
+    }
+
+    public void setReturnCarTime(long returnCarTime) {
+        this.returnCarTime = returnCarTime;
+    }
+
+    public long getOutwardBikeTime() {
+        return outwardBikeTime;
+    }
+
+    public void setOutwardBikeTime(long outwardBikeTime) {
+        this.outwardBikeTime = outwardBikeTime;
+    }
+
+    public long getReturnBikeTime() {
+        return returnBikeTime;
+    }
+
+    public void setReturnBikeTime(long returnBikeTime) {
+        this.returnBikeTime = returnBikeTime;
+    }
+
+    public long getOutwardWaitingTime() {
+        return outwardWaitingTime;
+    }
+
+    public void setOutwardWaitingTime(long outwardWaitingTime) {
+        this.outwardWaitingTime = outwardWaitingTime;
+    }
+
+    public long getReturnWaitingTime() {
+        return returnWaitingTime;
+    }
+
+    public void setReturnWaitingTime(long returnWaitingTime) {
+        this.returnWaitingTime = returnWaitingTime;
+    }
+
+    public void generateFirstLegRequest(RoutingRequest rq, Graph graph, GenericLocation parking, boolean arriveby) {
         rq.routerId = "default";
         if (arriveby) {
             rq.from = new GenericLocation(getFromLat(), getFromLon());
+            rq.to = parking;
+        } else {
+            rq.from = parking;
+            rq.to = new GenericLocation(getFromLat(), getFromLon());
+        }
+        rq.wheelchairAccessible = false;
+        rq.showIntermediateStops = false;
+        rq.clampInitialWait = -1;
+        rq.setArriveBy(arriveby);
+        rq.locale = Locale.ENGLISH;
+        rq.modes = new TraverseModeSet(getInitialMode());
+        rq.bikeParkAndRide = false;
+        rq.parkAndRide = false;
+        rq.twoway = false;
+        if (rq.rctx == null) {
+            rq.setRoutingContext(graph);
+            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                    new NoThruTrafficPathParser() };
+        }
+        rq.numItineraries = 1;
+        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+        rq.longDistance = true;
+        rq.maxTransfers = 4;
+    }
+
+    public void generateSecondLegRequest(RoutingRequest rq, Graph graph, GenericLocation parking, boolean arriveby) {
+        rq.routerId = "default";
+        if (arriveby) {
+            rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
+            rq.from = parking;
             rq.to = new GenericLocation(getToLat(), getToLon());
         } else {
+            rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
+            rq.from = new GenericLocation(getToLat(), getToLon());
+            rq.to = parking;
+        }
+        rq.wheelchairAccessible = false;
+        rq.showIntermediateStops = false;
+        rq.clampInitialWait = -1;
+        rq.setArriveBy(arriveby);
+        rq.locale = Locale.ENGLISH;
+        rq.modes = new TraverseModeSet("WALK,TRANSIT");
+        rq.bikeParkAndRide = false;
+        rq.parkAndRide = false;
+        rq.twoway = false;
+        if (rq.rctx == null) {
+            rq.setRoutingContext(graph);
+            rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
+                    new NoThruTrafficPathParser() };
+        }
+        rq.numItineraries = 1;
+        rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
+        rq.longDistance = true;
+        rq.maxTransfers = 4;
+    }
+
+    public void generateRequest(RoutingRequest rq, Graph graph, boolean arriveby) {
+        rq.routerId = "default";
+        if (arriveby) {
+            rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
+            rq.returnDateTime = rq.dateTime;
+            rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
+            rq.from = new GenericLocation(getFromLat(), getFromLon());
+            rq.to = new GenericLocation(getToLat(), getToLon());
+        } else {
+            rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
+            rq.returnDateTime = rq.dateTime;
+            rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
             rq.to = new GenericLocation(getFromLat(), getFromLon());
             rq.from = new GenericLocation(getToLat(), getToLon());
         }
-//        rq.maxWalkDistance = 1207.008;
         rq.wheelchairAccessible = false;
         rq.showIntermediateStops = false;
         rq.clampInitialWait = -1;
@@ -229,9 +426,6 @@ public class TwoWayOutput {
         else
             rq.parkAndRide = true;
         rq.twoway = false;
-        rq.setDateTime(departureDate, departureTime, graph.getTimeZone());
-        rq.returnDateTime = rq.dateTime;
-        rq.setDateTime(arrivalDate, arrivalTime, graph.getTimeZone());
         if (rq.rctx == null) {
             rq.setRoutingContext(graph);
             rq.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
@@ -240,10 +434,6 @@ public class TwoWayOutput {
         rq.numItineraries = 1;
         rq.dominanceFunction = new DominanceFunction.MinimumWeight(); 
         rq.longDistance = true;
-        if (rq.maxWalkDistance == Double.MAX_VALUE)
-            rq.maxWalkDistance = 2000;
-        if (rq.maxWalkDistance > 15000)
-            rq.maxWalkDistance = 15000;
-//        rq.maxTransfers = 4;
+        rq.maxTransfers = 4;
     }
 }

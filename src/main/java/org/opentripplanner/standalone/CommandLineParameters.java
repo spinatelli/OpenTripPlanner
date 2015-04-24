@@ -88,6 +88,10 @@ public class CommandLineParameters implements Cloneable {
             description = "Input CSV file for 2-way PNR routing tests")
     public File testInput;
     
+    @Parameter(names = {"--generator"},
+            description = "Generator input file path")
+    public File generator;
+    
     @Parameter(names = {"--testOutput"},
             description = "Output CSV file of 2-way PNR routing tests")
     public File testOutput;
@@ -95,14 +99,6 @@ public class CommandLineParameters implements Cloneable {
     @Parameter(names = {"--twoWayRouting"},
             description = "Two way routing with PNR nodes")
     public boolean twoWayRouting = false;
-    
-    @Parameter(names = {"--bboxSrc"},
-            description = "Source location bounding box")
-    public String bboxSrc = "";
-    
-    @Parameter(names = {"--bboxTgt"},
-            description = "Target location bounding box")
-    public String bboxTgt = "";
     
     @Parameter(names = { "--version", },
             description = "Print the version, and then exit.")

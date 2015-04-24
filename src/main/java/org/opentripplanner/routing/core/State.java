@@ -128,10 +128,10 @@ public class State implements Cloneable {
         if (options.twoway)
             setCarParked(!options.arriveBy);
         if (options.parkAndRide || options.kissAndRide) {
-            this.stateData.carParked = options.arriveBy;
+            this.stateData.carParked = options.arriveBy || options.carParked;
             this.stateData.nonTransitMode = this.stateData.carParked ? TraverseMode.WALK : TraverseMode.CAR;
         } else if (options.bikeParkAndRide) {
-            this.stateData.bikeParked = options.arriveBy;
+            this.stateData.bikeParked = options.arriveBy || options.bikeParked;
             this.stateData.nonTransitMode = this.stateData.bikeParked ? TraverseMode.WALK
                     : TraverseMode.BICYCLE;
         }

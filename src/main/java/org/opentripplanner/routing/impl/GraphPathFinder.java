@@ -22,15 +22,17 @@ import static org.opentripplanner.routing.automata.Nonterminal.star;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.math3.util.Pair;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.AStar;
 import org.opentripplanner.routing.algorithm.Algorithm;
-import org.opentripplanner.routing.algorithm.PNRDijkstra;
+import org.opentripplanner.routing.algorithm.OneWayPNRDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.EuclideanRemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.InterleavedBidirectionalHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
@@ -115,7 +117,7 @@ public class GraphPathFinder {
         // Reuse one instance of AStar for all N requests, which are carried out sequentially
         Algorithm algorithm;
         if(options.twoway)
-            algorithm = new PNRDijkstra();
+            algorithm = new OneWayPNRDijkstra();
         else
             algorithm = new AStar();
         if (options.rctx == null) {
@@ -204,8 +206,30 @@ public class GraphPathFinder {
             LOG.debug("we have {} paths", paths.size());
         }
         LOG.debug("END SEARCH ({} msec)", System.currentTimeMillis() - searchBeginTime);
-        if(!options.twoway)
+        if(!options.twoway || paths.size() % 2 != 0)
             Collections.sort(paths, new PathWeightComparator());
+        else {
+            List<Pair<Integer, Double>> pairs = new ArrayList<Pair<Integer, Double>>(paths.size());
+            for (int i = 0;i<paths.size();i+=2) {
+                pairs.add(new Pair(i, paths.get(i).getWeight()+paths.get(i+1).getWeight()));
+            }
+            Collections.sort(pairs, new Comparator<Pair<Integer,Double>>() {
+                @Override
+                public int compare(Pair<Integer,Double> o1, Pair<Integer,Double> o2) {
+                    if (o1.getValue() > o2.getValue())
+                        return -1;
+                    if (o1.getValue() < o2.getValue())
+                        return 1;
+                    return 0;                    
+                }
+            });
+            List<GraphPath> pths = Lists.newArrayList();
+            for (Pair<Integer,Double> pair : pairs) {
+                pths.add(paths.get(pair.getKey()));
+                pths.add(paths.get(pair.getKey()+1));
+            }
+            paths = pths;
+        }
         return paths;
     }
 

@@ -120,6 +120,7 @@ public class AccessNodeModule implements GraphBuilderModule {
             location = new GenericLocation(null, graph.getAgencyIds().iterator().next() + ":" + ts);
 
             /*
+             * From theory:
              * Full multi-modal backward profile search on the public transportation subnetwork of G
              * is performed, starting from a. This gives us travel time functions f(b) for each
              * access-node candidate b ∈ A, representing the time needed to get from node b to node
@@ -139,9 +140,8 @@ public class AccessNodeModule implements GraphBuilderModule {
             avgProfile += (time2 - time);
 
             /*
-             * uni-modal time-independent many-to-all Dijkstra search, restricted to the road
-             * subnetwork The road network is assumed time-independent since in this case it is used
-             * on foot
+             * uni-modal many-to-all Dijkstra search, restricted to the road
+             * subnetwork 
              * 
              * ts is inserted in the priority queue with key 0 and flag "covered"= true, the other
              * access nodes with their upper bound of the profile function above
@@ -208,7 +208,7 @@ public class AccessNodeModule implements GraphBuilderModule {
         mmdijkstra.setHeuristicCoefficient(heuristicCoefficient);
         Set<Vertex> term = new HashSet<Vertex>(Sets.newHashSet(Iterables.filter(vertices,
                 IntersectionVertex.class)));
-        // TODO: are these two needed?
+        
         term.addAll(Sets.newHashSet(Iterables.filter(vertices, ParkAndRideVertex.class)));
         term.addAll(Sets.newHashSet(Iterables.filter(vertices, BikeParkVertex.class)));
 

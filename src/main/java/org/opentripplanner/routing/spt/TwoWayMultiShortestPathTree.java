@@ -40,6 +40,7 @@ public class TwoWayMultiShortestPathTree extends ShortestPathTree {
     private Vertex from;
 
     private Vertex to;
+    private boolean oneway = false;
     
     @Override
     public List<GraphPath> getPaths() {
@@ -55,7 +56,8 @@ public class TwoWayMultiShortestPathTree extends ShortestPathTree {
             if (s.isFinal(true) && s.allPathParsersAccept() && s.pnrNode != null) {
                 GraphPath gp = new GraphPath(s, optimize);
                 ret.add(gp);
-                map.put(s.pnrNode, gp);
+                if (map != null)
+                    map.put(s.pnrNode, gp);
             }
         }
         return ret;
@@ -63,6 +65,8 @@ public class TwoWayMultiShortestPathTree extends ShortestPathTree {
     
     @Override    
     public List<GraphPath> getPaths(Vertex dest, boolean optimize) {
+        if (oneway) 
+            return getSPTPaths(out, from, null, optimize);
         Map<Vertex, GraphPath> mOut = new HashMap<Vertex, GraphPath>();
         List<GraphPath> pathsOut = getSPTPaths(out, from, mOut, optimize);
         Map<Vertex, GraphPath> mIn = new HashMap<Vertex, GraphPath>();
@@ -98,12 +102,16 @@ public class TwoWayMultiShortestPathTree extends ShortestPathTree {
     }
 
     public TwoWayMultiShortestPathTree(RoutingRequest options, ShortestPathTree out, ShortestPathTree in, Vertex from, Vertex to) {
+        this(options, out, in, from , to, false);
+    }
+    public TwoWayMultiShortestPathTree(RoutingRequest options, ShortestPathTree out, ShortestPathTree in, Vertex from, Vertex to, boolean oneway) {
         super(options, null);
         this.options = options;
         this.out = out;
         this.in = in;
         this.from = from;
         this.to = to;
+        this.oneway = oneway;
     }
 
     /****

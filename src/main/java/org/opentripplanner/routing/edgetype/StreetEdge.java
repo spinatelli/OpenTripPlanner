@@ -75,6 +75,7 @@ public class StreetEdge extends Edge implements Cloneable {
 
     public static final int CLASS_LINK = 32; // on/offramps; OSM calls them "links"
 
+    // 2/3
     public static final double CAR_RELUCTANCE = 1.5;
 
     private static final double GREENWAY_SAFETY_FACTOR = 0.1;
@@ -516,10 +517,10 @@ public class StreetEdge extends Edge implements Cloneable {
     private double rushHourFactor(long timeInMillis) {
         long secondsFromMidnight = getSecondsFromMidnight(timeInMillis);
         long f1, t1, f2, t2;
-        f1 = 7 * 60 * 60 + 30 * 60;
-        t1 = 9 * 60 * 60 + 30 * 60;
-        f2 = 16 * 60 * 60 + 30 * 60;
-        t2 = 19 * 60 * 60 + 30 * 60;
+        f1 = 7 * 60 * 60 + 00 * 60;
+        t1 = 10 * 60 * 60 + 00 * 60;
+        f2 = 16 * 60 * 60 + 00 * 60;
+        t2 = 20 * 60 * 60 + 00 * 60;
         boolean isRushHourMorning = secondsFromMidnight > f1
                 && secondsFromMidnight < t1;
         boolean isRushHourEvening = secondsFromMidnight > f2
@@ -529,14 +530,14 @@ public class StreetEdge extends Edge implements Cloneable {
                 return interpolate(f1, f1+HALF_HOUR, secondsFromMidnight);
             else if(secondsFromMidnight > t1 - HALF_HOUR)
                 return interpolate(t1 - HALF_HOUR, t1, secondsFromMidnight);
-        }
-        if (type != DirectionType.ENTERING && isRushHourEvening) {
+        } else if (type != DirectionType.ENTERING && isRushHourEvening) {
             if (secondsFromMidnight < f2 + HALF_HOUR)
                 return interpolate(f2, f2+HALF_HOUR, secondsFromMidnight);
             else if(secondsFromMidnight > t2 - HALF_HOUR)
                 return interpolate(t2 - HALF_HOUR, t2, secondsFromMidnight);
             return 1;
         }
+        
         return 0;
     }
     
